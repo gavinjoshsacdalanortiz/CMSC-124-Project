@@ -60,6 +60,7 @@ class TokenType(Enum):
     NUMBAR_LITERAL = "NUMBAR"
     YARN_LITERAL = "YARN"
     TROOF_LITERAL = "TROOF"
+    IDENTIFIER = "IDENTIFIER"
     
 class Token:
     def __init__(self, token_type, value, line_number, column):
@@ -92,7 +93,12 @@ class Lexeme:
             
             #Multi-Line comment area
             if stripped.startswith("OBTW"):
-                in_multiline_comment = True
+                in_multiline_comment = False
+                self.line_number += 1
+                continue
+            
+            if stripped.startswith("TLDR"):
+                in_multiline_comment = False
                 self.line_number += 1
                 continue
             
@@ -102,7 +108,36 @@ class Lexeme:
 
             #Code for literals and identifiers
             words = stripped.split() #split the line into individual words for easier checking
+
+            for word in words:
+                token_type = None
+
+                #Matching of any known keywords
+                for t in TokenType:
+                    if word.upper() == t.value:
+                        token_type = t
+                        break
+
+                if not token_type:
+                    if word.isdigit():
+                        token_type = TokenType.NUMBR_LITERAL
+                    elif word.replace('.','', 1).isdigit():
+                        token_type = TokenType.NUMBAR_LITERAL
+                    elif word.startswith('"') and word.endswith('"'):
+                        token_type = TokenType.YARN_LITERAL
+                    elif word in ["WIN", "FAIL"]:
+                        token_type = TokenType.TROOF_LITERAL
+                    else:
+                        token_type = TokenType.IDENTIFIER
             
+                self.tokens.append(Token(token_type, word, self.line_number, column))
+                column += len(word) + 1
+        
+            self.line_number += 1
+
+        return self.tokens
+    
+#Section for File Handling
 #check if file provided
 if len(sys.argv) < 2:
     print("python project.py <filename.lol>") 
@@ -127,6 +162,8 @@ except Exception as e:
     print(f"Error reading file: {e}")
     sys.exit(1)
 
+
+
 # tokenize the code
 lexer = Lexeme(code)
 tokens = lexer.tokenize()
@@ -137,3 +174,4 @@ for token in tokens:
     print(token)
 print("=" * 60)
 print(f"Total tokens: {len(tokens)}")
+
