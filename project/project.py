@@ -80,20 +80,27 @@ class Lexeme:
 
 
     def tokenize(self):
-        lines = self.source.splitlines() #split the source code into indiv lines for easier checking
-        in_multiline_comment = False #implemented to check if we are reading a multi-line comment   
+        lines = self.source.splitlines()
+        in_multiline_comment = False
+        multiword_keywords = [
+            "I HAS A", "SUM OF", "DIFF OF", "PRODUKT OF", "QUOSHUNT OF", 
+            "MOD OF", "BIGGR OF", "SMALLR OF", "BOTH OF", "EITHER OF", 
+            "WON OF", "ANY OF", "ALL OF", "BOTH SAEM", "IS NOW A", 
+            "O RLY?", "YA RLY", "NO WAI", "WTF?", "IM IN YR", "IM OUTTA YR", 
+            "HOW IZ I", "IF U SAY SO", "FOUND YR", "I IZ"
+        ]
 
-        for line in lines:  #Loop through each line in the source code
-            column = 1      #Counter for column restarts to 1 for every new line
-            stripped = line.strip()     #aids in removing leading whitespaces per new line
+        for line in lines:
+            column = 1
+            stripped = line.strip()
 
-            if stripped.startswith("BTW") or stripped == "": #skip any single line comments met in the process
+            if stripped.startswith("BTW") or stripped == "":
                 self.line_number += 1
                 continue
             
-            #Multi-Line comment area
+            #Multi-line comment area
             if stripped.startswith("OBTW"):
-                in_multiline_comment = False
+                in_multiline_comment = True
                 self.line_number += 1
                 continue
             
@@ -106,33 +113,94 @@ class Lexeme:
                 self.line_number += 1
                 continue
 
-            #Code for literals and identifiers
-            words = stripped.split() #split the line into individual words for easier checking
-
-            for word in words:
+            #process line character by character
+            i = 0
+            line_length = len(stripped)
+            
+            while i < line_length:
+                #skip whitespace
+                if stripped[i].isspace():
+                    i += 1
+                    column += 1
+                    continue
+                
+                #handle string literals
+                if stripped[i] == '"':
+                    #find closing quote
+                    j = i + 1
+                    while j < line_length and stripped[j] != '"':
+                        j += 1
+                    
+                    if j < line_length:  #found closing quote
+                        yarn_literal = stripped[i:j+1]
+                        self.tokens.append(Token(TokenType.YARN_LITERAL, yarn_literal, self.line_number, column))
+                        i = j + 1
+                        column += len(yarn_literal)
+                        continue
+                    else:
+                        # unclosed string --> handle error
+                        pass
+                
+                #check for multi-word keywords
+                token_found = False
+                for keyword in multiword_keywords:
+                    keyword_upper = keyword.upper()
+                    if (i + len(keyword)) <= line_length and stripped[i:i+len(keyword)].upper() == keyword_upper:
+                        #check if complete word (followed by space or EoL)
+                        next_char_index = i + len(keyword)
+                        if (next_char_index >= line_length or 
+                            stripped[next_char_index].isspace() or
+                            stripped[next_char_index] in [',', ';', ')', '(', '.']):
+                            
+                            token_type = None
+                            for t in TokenType:
+                                if t.value == keyword_upper:
+                                    token_type = t
+                                    break
+                            
+                            if token_type:
+                                self.tokens.append(Token(token_type, keyword, self.line_number, column))
+                            
+                            i += len(keyword)
+                            column += len(keyword)
+                            token_found = True
+                            break
+                
+                if token_found:
+                    continue
+                
+                #single-word tokens
+                j = i
+                while j < line_length and not stripped[j].isspace():
+                    j += 1
+                
+                word = stripped[i:j]
+                
+                #determine token type
                 token_type = None
-
-                #Matching of any known keywords
+                
+                # check if keyword
                 for t in TokenType:
                     if word.upper() == t.value:
                         token_type = t
                         break
-
+                
                 if not token_type:
                     if word.isdigit():
                         token_type = TokenType.NUMBR_LITERAL
-                    elif word.replace('.','', 1).isdigit():
+                    elif word.replace('.', '', 1).isdigit() and word.count('.') == 1:
                         token_type = TokenType.NUMBAR_LITERAL
-                    elif word.startswith('"') and word.endswith('"'):
-                        token_type = TokenType.YARN_LITERAL
                     elif word in ["WIN", "FAIL"]:
                         token_type = TokenType.TROOF_LITERAL
                     else:
                         token_type = TokenType.IDENTIFIER
-            
+                
                 self.tokens.append(Token(token_type, word, self.line_number, column))
-                column += len(word) + 1
-        
+                
+                # move to next word
+                i = j
+                column += len(word)
+            
             self.line_number += 1
 
         return self.tokens
@@ -169,9 +237,7 @@ lexer = Lexeme(code)
 tokens = lexer.tokenize()
 
 print(f"Tokens from '{filename}':")
-print("=" * 60)
 for token in tokens:
     print(token)
-print("=" * 60)
 print(f"Total tokens: {len(tokens)}")
 
