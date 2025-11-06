@@ -1,4 +1,6 @@
 from enum import Enum
+import sys 
+import os
 
 class TokenType(Enum):
     HAI = "HAI"
@@ -87,7 +89,51 @@ class Lexeme:
             if stripped.startswith("BTW") or stripped == "": #skip any single line comments met in the process
                 self.line_number += 1
                 continue
-
+            
             #Multi-Line comment area
+            if stripped.startswith("OBTW"):
+                in_multiline_comment = True
+                self.line_number += 1
+                continue
+            
+            if in_multiline_comment:
+                self.line_number += 1
+                continue
 
             #Code for literals and identifiers
+            words = stripped.split() #split the line into individual words for easier checking
+            
+#check if file provided
+if len(sys.argv) < 2:
+    print("python project.py <filename.lol>") 
+    print("provide .lol file to tokenize")
+    sys.exit(1)
+
+filename = sys.argv[1]
+
+if not filename.endswith('.lol'): # check file extension
+    print("Error: file must have .lol extension")
+    sys.exit(1)
+
+if not os.path.exists(filename): # check if file exists
+    print(f"Error: File '{filename}' not found")
+    sys.exit(1)
+
+# read the file
+try:
+    with open(filename, 'r') as file:
+        code = file.read()
+except Exception as e:
+    print(f"Error reading file: {e}")
+    sys.exit(1)
+
+# tokenize the code
+lexer = Lexeme(code)
+tokens = lexer.tokenize()
+
+print(f"Tokens from '{filename}':")
+print("=" * 60)
+for token in tokens:
+    print(token)
+print("=" * 60)
+print(f"Total tokens: {len(tokens)}")
