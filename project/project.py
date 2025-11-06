@@ -68,3 +68,26 @@ class Token:
     
     def __repr__(self):
         return f"Token({self.type}, '{self.value}', Line: {self.line}, Col: {self.column})"
+
+class Lexeme:
+    def __init__(self, source_code):
+        self.source = source_code # store LOLCODE source as a string
+        self.tokens = []     #List all generated tokens after  def tokenize
+        self.line_number = 1 
+
+
+    def tokenize(self):
+        lines = self.source.splitlines() #split the source code into indiv lines for easier checking
+        in_multiline_comment = False #implemented to check if we are reading a multi-line comment   
+
+        for line in lines:  #Loop through each line in the source code
+            column = 1      #Counter for column restarts to 1 for every new line
+            stripped = line.strip()     #aids in removing leading whitespaces per new line
+
+            if stripped.startswith("BTW") or stripped == "": #skip any single line comments met in the process
+                self.line_number += 1
+                continue
+
+            #Multi-Line comment area
+
+            #Code for literals and identifiers
