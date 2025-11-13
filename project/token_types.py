@@ -1,5 +1,7 @@
-from enum import Enum
+from enum import Enum # Import Enum for defining token types as enumerations
 
+# Define token types for LOLCODE 
+# Each token type equals to a KEYWORD, LITERAL, or IDENTIFIER
 class TokenType(Enum):
     HAI = "HAI"
     KTHXBYE = "KTHXBYE"
@@ -61,12 +63,15 @@ class TokenType(Enum):
     NOOB = "NOOB"
     IDENTIFIER = "IDENTIFIER"
 
+# Token class to represent individual tokens for easier handling during parsing
 class Token:
+    # Initialize token with type, value, line number, and column
     def __init__(self, token_type, value, line_number, column):
         self.type = token_type
         self.value = value
         self.line = line_number
         self.column = column
-    
+        
+    # String representation of token for debugging
     def __repr__(self):
         return f"Token({self.type}, '{self.value}', Line: {self.line}, Col: {self.column})"

@@ -1,13 +1,15 @@
-import tkinter as tk
-from tkinter import ttk, filedialog, scrolledtext, messagebox, simpledialog
-from lexer import Lexer
-from parser import Parser
+import tkinter as tk # import tkinter library
+from tkinter import ttk, filedialog, scrolledtext, messagebox, simpledialog # import tkinter components
+from lexer import Lexer # import Lexer class
+from parser import Parser # import Parser class
 
+# GUI class for LOL CODE interpreter
 class LOLCodeInterpreterGUI:
+    # Initialize GUI components
     def __init__(self, root):
         self.root = root
-        self.root.title("LOL CODE Interpreter")
-        self.root.geometry("1200x700")
+        self.root.title("LOL CODE Interpreter") # set window title
+        self.root.geometry("1200x700") # set window size
         
         # Create main container
         main_container = tk.Frame(root)
@@ -109,6 +111,7 @@ class LOLCodeInterpreterGUI:
         
         self.symbol_table_data = {}
     
+    # Open file dialog to load LOLCODE file
     def open_file(self):
         filename = filedialog.askopenfilename(
             title="Select LOLCODE file",
@@ -125,6 +128,7 @@ class LOLCodeInterpreterGUI:
             except Exception as e:
                 messagebox.showerror("Error", f"Could not open file: {str(e)}")
     
+    # Update symbol table display
     def update_symbol_table(self, name, value):
         self.symbol_table_data[name] = value
         
@@ -136,6 +140,7 @@ class LOLCodeInterpreterGUI:
             display_value = self.format_value(var_value)
             self.symbol_tree.insert('', tk.END, values=(var_name, display_value))
     
+    # Format value for display in symbol table
     def format_value(self, value):
         if value is None:
             return 'NOOB'
@@ -144,15 +149,18 @@ class LOLCodeInterpreterGUI:
         else:
             return str(value)
     
+    # Write output to console
     def write_to_console(self, text):
         self.console.insert(tk.END, text)
         self.console.see(tk.END)
         self.root.update()
     
+    # Read input from user via dialog
     def read_input(self, prompt):
         result = simpledialog.askstring("Input", prompt)
         return result if result else ''
     
+    # Execute the code from text editor
     def execute_code(self):
         # Clear previous results
         self.console.delete(1.0, tk.END)

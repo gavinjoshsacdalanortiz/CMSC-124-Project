@@ -1,7 +1,9 @@
-from token_types import TokenType
-from LOL_exceptions import BreakException, ReturnException
+from token_types import TokenType # Import TokenType Enum 
+from LOL_exceptions import BreakException, ReturnException # Import custom exceptions for control flow
 
+# Parser class for parsing LOLCODE tokens + executing program
 class Parser:
+    # Initialize parser with tokens and callbacks for symbol table updates and console I/O
     def __init__(self, tokens, update_symbol_callback, write_console_callback, read_input_callback):
         self.tokens = tokens
         self.position = 0
@@ -12,19 +14,23 @@ class Parser:
         self.read_input_callback = read_input_callback
         self.functions = {}
     
+    # get current token from token list
     def current_token(self):
         if self.position < len(self.tokens):
             return self.tokens[self.position]
         return None
     
+    # peek ahead in token list without advancing position
     def peek(self, offset=1):
         if self.position + offset < len(self.tokens):
             return self.tokens[self.position + offset]
         return None
     
+    # advance to next token
     def advance(self):
         self.position += 1
     
+    # expect a specific token type, raise error if not found
     def expect(self, token_type):
         token = self.current_token()
         if not token or token.type != token_type:
@@ -32,8 +38,9 @@ class Parser:
         self.advance()
         return token
     
+    # main parse function to process tokens
     def parse(self):
-        self.expect(TokenType.HAI)
+        self.expect(TokenType.HAI) # start of program
         
         # Optional version number
         if self.current_token() and self.current_token().type in [TokenType.NUMBR_LITERAL, TokenType.NUMBAR_LITERAL]:
@@ -47,33 +54,44 @@ class Parser:
             self.expect(TokenType.BUHBYE)
         
         # Main program body
+        # iterate through tokens until KTHXBYE (end of program) and parse statements 
         while self.current_token() and self.current_token().type != TokenType.KTHXBYE:
-            if self.current_token().type == TokenType.HOW_IZ_I:
+            # check for function definition or statement 
+            if self.current_token().type == TokenType.HOW_IZ_I: 
                 self.parse_function_definition()
+            # otherwise parse as statement
             else:
                 self.parse_statement()
         
         self.expect(TokenType.KTHXBYE)
     
+    # parse variable declaration statement
     def parse_variable_declaration(self):
-        self.expect(TokenType.I_HAS_A)
+        # Expect "I HAS A" followed by identifier
+        self.expect(TokenType.I_HAS_A) 
         var_name = self.expect(TokenType.IDENTIFIER).value
         
         value = None  # NOOB by default
         
+        # Optional initialization with "ITZ" followed by expression
         if self.current_token() and self.current_token().type == TokenType.ITZ:
+            # if ITZ found, parse expression for initial value
             self.advance()
             value = self.parse_expression()
         
+        # Store variable and update symbol table
         self.variables[var_name] = value
         self.update_symbol_callback(var_name, value)
     
+    # parse a general statement
     def parse_statement(self):
+        # get current token to determine statement type
         token = self.current_token()
         
         if not token:
             return
         
+        # handle different statement types based on current token
         if token.type == TokenType.I_HAS_A:
             self.parse_variable_declaration()
         elif token.type == TokenType.VISIBLE:
@@ -88,12 +106,13 @@ class Parser:
             self.parse_loop()
         elif token.type == TokenType.GTFO:
             self.advance()
-            raise BreakException()
+            raise BreakException() # raise BreakException for GTFO
         elif token.type == TokenType.FOUND_YR:
             self.advance()
             value = self.parse_expression()
-            raise ReturnException(value)
+            raise ReturnException(value) # raise ReturnException with return value
         elif token.type == TokenType.I_IZ:
+            # Function call statement (updates IT)
             result = self.parse_function_call()
             self.IT = result
             self.update_symbol_callback('IT', self.IT)
@@ -112,27 +131,33 @@ class Parser:
             self.IT = self.parse_expression()
             self.update_symbol_callback('IT', self.IT)
     
+    # parse assignment statement
     def parse_assignment(self):
-        var_name = self.expect(TokenType.IDENTIFIER).value
+        var_name = self.expect(TokenType.IDENTIFIER).value # get variable name
         
+        # check if variable is declared
         if var_name not in self.variables:
             raise NameError(f"Semantic Error: Variable '{var_name}' not declared")
         
+        # expect assignment operator "R"
         self.expect(TokenType.R)
         value = self.parse_expression()
         
+        # assign value to variable and update symbol table
         self.variables[var_name] = value
         self.update_symbol_callback(var_name, value)
         self.IT = value
         self.update_symbol_callback('IT', self.IT)
     
+    # parse VISIBLE statement
     def parse_visible(self):
         self.advance()  # consume VISIBLE
         
-        output = ''
-        first = True
-        suppress_newline = False
+        output = '' # output string
+        first = True # flag for first value
+        suppress_newline = False # flag for suppressing newline
         
+        # concatenate expressions until end of statement
         while (self.current_token() and 
                self.current_token().type not in [TokenType.I_HAS_A, TokenType.VISIBLE, 
                                                    TokenType.GIMMEH, TokenType.KTHXBYE,
@@ -147,39 +172,50 @@ class Parser:
                 self.advance()
                 break
             
+            # Add space before value if not first
             if not first:
                 output += ' '
             first = False
             
+            # parse expression and append to output
             value = self.parse_expression()
             output += self.stringify(value)
             
+            # Check for "AN" to continue concatenation
             if self.current_token() and self.current_token().type == TokenType.AN:
                 self.advance()
         
+        # Append newline unless suppressed
         if not suppress_newline:
             output += '\n'
         
+        # write output to console
         self.write_console_callback(output)
     
+    # parse GIMMEH statement
     def parse_gimmeh(self):
         self.advance()  # consume GIMMEH
         var_name = self.expect(TokenType.IDENTIFIER).value
         
+        # check if variable is declared
         if var_name not in self.variables:
             raise NameError(f"Semantic Error: Variable '{var_name}' not declared")
         
+        # read input from user
         input_value = self.read_input_callback(f"Enter value for {var_name}:")
         self.variables[var_name] = input_value
         self.update_symbol_callback(var_name, input_value)
     
+    # parse IF-THEN-ELSE statement
     def parse_if_then_else(self):
         self.advance()  # consume O RLY?
         
-        condition = self.IT
+        condition = self.IT # use IT as condition
         
+        # expect YA RLY
         self.expect(TokenType.YA_RLY)
         
+        # evaluate condition and execute appropriate block
         if self.is_truthy(condition):
             # Execute YA RLY block
             while (self.current_token() and 
@@ -203,18 +239,22 @@ class Parser:
         
         self.expect(TokenType.OIC)
     
+    # parse SWITCH statement
     def parse_switch(self):
         self.advance()  # consume WTF?
         
         switch_value = self.IT
-        found_match = False
-        in_omgwtf = False
+        found_match = False # flag for found matching case
+        in_omgwtf = False # flag for default case
         
+        # process cases until OIC
         while self.current_token() and self.current_token().type != TokenType.OIC:
+            # handle OMG case
             if self.current_token().type == TokenType.OMG:
                 self.advance()
                 case_value = self.parse_expression()
                 
+                # check for match if not already matched or in default
                 if not found_match and not in_omgwtf:
                     if switch_value == case_value:
                         found_match = True
@@ -239,6 +279,7 @@ class Parser:
                            self.current_token().type not in [TokenType.OMG, TokenType.OMGWTF, TokenType.OIC]):
                         self.advance()
             
+            # handle OMGWTF default case
             elif self.current_token().type == TokenType.OMGWTF:
                 self.advance()
                 in_omgwtf = True
@@ -254,9 +295,11 @@ class Parser:
             else:
                 self.advance()
         
+        # expect OIC to end switch
         if self.current_token() and self.current_token().type == TokenType.OIC:
             self.expect(TokenType.OIC)
     
+    # parse loop statement
     def parse_loop(self):
         self.advance()  # consume IM IN YR
         loop_name = self.expect(TokenType.IDENTIFIER).value
@@ -282,7 +325,7 @@ class Parser:
             condition_type = self.current_token().type
             self.advance()
             condition_start_pos = self.position
-            # Skip the condition for now, we'll evaluate it in the loop
+            # Skip the condition for now, evaluate it in the loop
             self.skip_expression()
         
         # Mark the start of loop body
@@ -342,6 +385,7 @@ class Parser:
             if expected_name != loop_name:
                 raise SyntaxError(f"Loop name mismatch: expected '{loop_name}', got '{expected_name}'")
     
+    # parse function definition
     def parse_function_definition(self):
         self.advance()  # consume HOW IZ I
         func_name = self.expect(TokenType.IDENTIFIER).value
@@ -382,10 +426,12 @@ class Parser:
         if self.current_token() and self.current_token().type == TokenType.IF_U_SAY_SO:
             self.advance()
     
+    # parse function call
     def parse_function_call(self):
         self.advance()  # consume I IZ
         func_name = self.expect(TokenType.IDENTIFIER).value
         
+        # check if function is defined
         if func_name not in self.functions:
             raise NameError(f"Semantic Error: Function '{func_name}' not defined")
         
@@ -431,12 +477,13 @@ class Parser:
         
         return return_value if return_value is not None else None
     
+    # skip expression for constructs like loop conditions
     def skip_expression(self):
-        """Skip an expression without evaluating it"""
         token = self.current_token()
         if not token:
             return
         
+        # skip literals and identifiers
         if token.type in [TokenType.NUMBR_LITERAL, TokenType.NUMBAR_LITERAL, 
                          TokenType.YARN_LITERAL, TokenType.TROOF_LITERAL,
                          TokenType.NOOB, TokenType.IDENTIFIER]:
@@ -456,21 +503,27 @@ class Parser:
         else:
             self.advance()
     
+    # parse type cast statement
     def parse_type_cast(self):
+        # expect identifier
         var_name = self.expect(TokenType.IDENTIFIER).value
         self.expect(TokenType.IS_NOW_A)
-        type_name = self.current_token().value
+        type_name = self.current_token().value # get target type
         self.advance()
         
+        # check if variable is declared
         value = self.variables[var_name]
         casted_value = self.cast_value(value, type_name)
         
+        # assign casted value and update symbol table
         self.variables[var_name] = casted_value
         self.update_symbol_callback(var_name, casted_value)
     
+    # parse expression and return its value
     def parse_expression(self):
         token = self.current_token()
         
+        # check for end of tokens
         if not token:
             raise SyntaxError("Unexpected end of input")
         
@@ -487,6 +540,7 @@ class Parser:
             self.advance()
             return token.value[1:-1]  # Remove quotes
         
+        # Boolean literals
         if token.type == TokenType.TROOF_LITERAL:
             self.advance()
             return token.value == "WIN"
@@ -574,6 +628,7 @@ class Parser:
         
         raise SyntaxError(f"Syntax Error at line {token.line}: Unexpected token {token.type.value}")
     
+    # parse binary operation
     def parse_binary_op(self, operation):
         self.advance()
         left = self.parse_expression()
@@ -581,6 +636,7 @@ class Parser:
         right = self.parse_expression()
         return operation(left, right)
     
+    # utility function to convert value to number
     def to_number(self, value):
         if isinstance(value, (int, float)):
             return value
@@ -597,24 +653,29 @@ class Parser:
             return 0
         return 0
     
+    # utility function to determine truthiness of a value
     def is_truthy(self, value):
-        if value is None:
+        if value is None: # NOOB is false
             return False
+        # if value is boolean, number, or string
         if isinstance(value, bool):
             return value
         if isinstance(value, (int, float)):
             return value != 0
         if isinstance(value, str):
             return value != ''
-        return True
+        return True 
     
+    # utility function to convert value to string
     def stringify(self, value):
-        if value is None:
+        if value is None: # NOOB
             return ''
+        # check for boolean, if so convert to WIN/FAIL
         if isinstance(value, bool):
             return 'WIN' if value else 'FAIL'
-        return str(value)
+        return str(value) # convert other types to string
     
+    # utility function to cast value to specified type
     def cast_value(self, value, type_name):
         type_upper = type_name.upper()
         if type_upper == 'NUMBR':
