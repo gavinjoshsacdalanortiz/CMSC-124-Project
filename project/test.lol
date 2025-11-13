@@ -1,40 +1,22 @@
 HAI
-BTW This is a sample LOLCODE program
-
-WAZZUP
-    I HAS A num1 ITZ 10
-    I HAS A num2 ITZ 5
-    I HAS A result
-    I HAS A message ITZ "Hello World"
-    I HAS A decimal ITZ 3.14
-BUHBYE
-
-BTW Display a message
-VISIBLE message
-
-BTW Simple arithmetic operations
-result R SUM OF num1 AN num2
-VISIBLE result
-
-result R DIFF OF num1 AN num2
-VISIBLE result
-
-result R PRODUKT OF num1 AN num2
-VISIBLE result
-
-OBTW
-This is a multi-line comment
-It can span multiple lines
-Everything here is ignored
-TLDR
-
-BTW Comparison operation
-BOTH SAEM num1 AN BIGGR OF num1 AN num2
-
-BTW Boolean operation
-BOTH OF WIN AN FAIL
-
-BTW String concatenation
-SMOOSH "The answer is " AN result MKAY
-
+    BTW Test conditionals
+    I HAS A age ITZ 18
+    
+    BOTH SAEM age AN 18
+    O RLY?
+        YA RLY
+            VISIBLE "You are exactly 18!"
+        NO WAI
+            VISIBLE "You are not 18"
+    OIC
+    
+    BTW Test with greater than using BIGGR OF
+    I HAS A score ITZ 85
+    BOTH SAEM score AN BIGGR OF score AN 60
+    O RLY?
+        YA RLY
+            VISIBLE "You passed!"
+        NO WAI
+            VISIBLE "You failed"
+    OIC
 KTHXBYE
