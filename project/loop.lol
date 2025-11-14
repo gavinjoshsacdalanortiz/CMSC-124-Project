@@ -1,0 +1,9 @@
+HAI 1.2
+I HAS A i ITZ 0
+
+IM IN YR loop UPPIN YR i TIL BOTH SAEM i AN 5
+    VISIBLE "Count: " i
+IM OUTTA YR loop
+
+VISIBLE "Done!"
+KTHXBYE
