@@ -134,30 +134,43 @@ class Parser:
         self.update_symbol_callback('IT', self.IT)
 
     # parse VISIBLE statement
+    # parse VISIBLE statement
     def parse_visible(self):
         self.advance()
         output_parts = []
+        
         while self.current_token():
             token = self.current_token()
+            
+            # Break on statement-ending tokens
             if token.type in [TokenType.GIMMEH, TokenType.KTHXBYE,
-                             TokenType.YA_RLY, TokenType.NO_WAI,
-                             TokenType.OIC, TokenType.O_RLY,
-                             TokenType.IM_OUTTA_YR, TokenType.OMG,
-                             TokenType.OMGWTF, TokenType.GTFO,
-                             TokenType.VISIBLE, TokenType.BTW,
-                             TokenType.IM_IN_YR]:
+                            TokenType.YA_RLY, TokenType.NO_WAI,
+                            TokenType.OIC, TokenType.O_RLY,
+                            TokenType.IM_OUTTA_YR, TokenType.OMG,
+                            TokenType.OMGWTF, TokenType.GTFO,
+                            TokenType.VISIBLE, TokenType.BTW,
+                            TokenType.IM_IN_YR]:
                 break
+                
+            # Break on assignment statement
             if token.type == TokenType.IDENTIFIER and self.peek() and self.peek().type == TokenType.R:
                 break
-            if token.type in [TokenType.PLUS, TokenType.AN]:
+            
+            # Skip AN separator (explicit concatenation)
+            if token.type == TokenType.AN:
                 self.advance()
                 continue
+                
+            # Skip PLUS if used as separator
+            if token.type == TokenType.PLUS:
+                self.advance()
+                continue
+            
+            # Parse and add the expression value
             value = self.parse_expression()
             output_parts.append(self.stringify(value))
-            if self.current_token() and self.current_token().type in [TokenType.PLUS, TokenType.AN]:
-                continue
-            else:
-                break
+        
+        # Join all parts and write to console
         output = ''.join(output_parts)
         self.write_console_callback(output + '\n')
 
