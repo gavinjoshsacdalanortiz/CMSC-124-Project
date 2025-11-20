@@ -62,6 +62,7 @@ class TokenType(Enum):
     TROOF_LITERAL = "TROOF"
     NOOB = "NOOB"
     IDENTIFIER = "IDENTIFIER"
+    PLUS = "+"
 
 # Token class to represent individual tokens for easier handling during parsing
 class Token:

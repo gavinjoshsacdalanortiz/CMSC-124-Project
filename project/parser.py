@@ -1,5 +1,5 @@
-from token_types import TokenType # Import TokenType Enum 
-from LOL_exceptions import BreakException, ReturnException # Import custom exceptions for control flow
+from token_types import TokenType  # Import TokenType Enum 
+from LOL_exceptions import BreakException, ReturnException  # Import custom exceptions for control flow
 
 # Parser class for parsing LOLCODE tokens + executing program
 class Parser:
@@ -7,29 +7,29 @@ class Parser:
     def __init__(self, tokens, update_symbol_callback, write_console_callback, read_input_callback):
         self.tokens = tokens
         self.position = 0
-        self.variables = {}
+        self.variables = {"IT": None}
         self.IT = None
         self.update_symbol_callback = update_symbol_callback
         self.write_console_callback = write_console_callback
         self.read_input_callback = read_input_callback
         self.functions = {}
-    
+
     # get current token from token list
     def current_token(self):
         if self.position < len(self.tokens):
             return self.tokens[self.position]
         return None
-    
+
     # peek ahead in token list without advancing position
     def peek(self, offset=1):
         if self.position + offset < len(self.tokens):
             return self.tokens[self.position + offset]
         return None
-    
+
     # advance to next token
     def advance(self):
         self.position += 1
-    
+
     # expect a specific token type, raise error if not found
     def expect(self, token_type):
         token = self.current_token()
@@ -37,61 +37,52 @@ class Parser:
             raise SyntaxError(f"Syntax Error at line {token.line if token else 'EOF'}: Expected {token_type.value}, got {token.type.value if token else 'EOF'}")
         self.advance()
         return token
-    
+
     # main parse function to process tokens
     def parse(self):
-        self.expect(TokenType.HAI) # start of program
-        
+        self.expect(TokenType.HAI)  # start of program
+
         # Optional version number
         if self.current_token() and self.current_token().type in [TokenType.NUMBR_LITERAL, TokenType.NUMBAR_LITERAL]:
             self.advance()
-        
+
         # Optional variable declaration section
         if self.current_token() and self.current_token().type == TokenType.WAZZUP:
             self.advance()
             while self.current_token() and self.current_token().type != TokenType.BUHBYE:
                 self.parse_variable_declaration()
             self.expect(TokenType.BUHBYE)
-        
+
         # Main program body
-        # iterate through tokens until KTHXBYE (end of program) and parse statements 
         while self.current_token() and self.current_token().type != TokenType.KTHXBYE:
-            # check for function definition or statement 
-            if self.current_token().type == TokenType.HOW_IZ_I: 
+            if self.current_token().type == TokenType.HOW_IZ_I:
                 self.parse_function_definition()
-            # otherwise parse as statement
             else:
                 self.parse_statement()
-        
+
         self.expect(TokenType.KTHXBYE)
-    
+
     # parse variable declaration statement
     def parse_variable_declaration(self):
-        # Expect "I HAS A" followed by identifier
-        self.expect(TokenType.I_HAS_A) 
+        self.expect(TokenType.I_HAS_A)
         var_name = self.expect(TokenType.IDENTIFIER).value
-        
+
         value = None  # NOOB by default
-        
-        # Optional initialization with "ITZ" followed by expression
+
         if self.current_token() and self.current_token().type == TokenType.ITZ:
-            # if ITZ found, parse expression for initial value
             self.advance()
             value = self.parse_expression()
-        
-        # Store variable and update symbol table
+
         self.variables[var_name] = value
         self.update_symbol_callback(var_name, value)
-    
+
     # parse a general statement
     def parse_statement(self):
-        # get current token to determine statement type
         token = self.current_token()
-        
+
         if not token:
             return
-        
-        # handle different statement types based on current token
+
         if token.type == TokenType.I_HAS_A:
             self.parse_variable_declaration()
         elif token.type == TokenType.VISIBLE:
@@ -106,105 +97,83 @@ class Parser:
             self.parse_loop()
         elif token.type == TokenType.GTFO:
             self.advance()
-            raise BreakException() # raise BreakException for GTFO
+            if getattr(self, "_in_loop", False):
+                raise BreakException()
+            else:
+                raise ReturnException(None)
         elif token.type == TokenType.FOUND_YR:
             self.advance()
             value = self.parse_expression()
-            raise ReturnException(value) # raise ReturnException with return value
+            raise ReturnException(value)
         elif token.type == TokenType.I_IZ:
-            # Function call statement (updates IT)
             result = self.parse_function_call()
             self.IT = result
             self.update_symbol_callback('IT', self.IT)
         elif token.type == TokenType.IDENTIFIER:
-            # Check for assignment or type cast
             if self.peek() and self.peek().type == TokenType.R:
                 self.parse_assignment()
             elif self.peek() and self.peek().type == TokenType.IS_NOW_A:
                 self.parse_type_cast()
             else:
-                # Expression statement (updates IT)
                 self.IT = self.parse_expression()
                 self.update_symbol_callback('IT', self.IT)
         else:
-            # Expression statement
             self.IT = self.parse_expression()
             self.update_symbol_callback('IT', self.IT)
-    
+
     # parse assignment statement
     def parse_assignment(self):
-        var_name = self.expect(TokenType.IDENTIFIER).value # get variable name
-        
-        # check if variable is declared
+        var_name = self.expect(TokenType.IDENTIFIER).value
         if var_name not in self.variables:
             raise NameError(f"Semantic Error: Variable '{var_name}' not declared")
-        
-        # expect assignment operator "R"
         self.expect(TokenType.R)
         value = self.parse_expression()
-        
-        # assign value to variable and update symbol table
         self.variables[var_name] = value
         self.update_symbol_callback(var_name, value)
         self.IT = value
         self.update_symbol_callback('IT', self.IT)
-    
+
     # parse VISIBLE statement
     def parse_visible(self):
-        self.advance()  # consume VISIBLE
-        
-        output = '' # output string
-        first = True # flag for first value
-        suppress_newline = False # flag for suppressing newline
-        
-        # concatenate expressions until end of statement
-        while (self.current_token() and 
-               self.current_token().type not in [TokenType.I_HAS_A, TokenType.VISIBLE, 
-                                                   TokenType.GIMMEH, TokenType.KTHXBYE,
-                                                   TokenType.YA_RLY, TokenType.NO_WAI,
-                                                   TokenType.OIC, TokenType.O_RLY,
-                                                   TokenType.IM_OUTTA_YR, TokenType.OMG,
-                                                   TokenType.OMGWTF, TokenType.GTFO]):
-            
-            # Check for exclamation mark (suppress newline)
-            if self.current_token().value == '!':
-                suppress_newline = True
-                self.advance()
+        self.advance()
+        output_parts = []
+        while self.current_token():
+            token = self.current_token()
+            if token.type in [TokenType.GIMMEH, TokenType.KTHXBYE,
+                             TokenType.YA_RLY, TokenType.NO_WAI,
+                             TokenType.OIC, TokenType.O_RLY,
+                             TokenType.IM_OUTTA_YR, TokenType.OMG,
+                             TokenType.OMGWTF, TokenType.GTFO,
+                             TokenType.VISIBLE, TokenType.BTW,
+                             TokenType.IM_IN_YR]:
                 break
-            
-            # Add space before value if not first
-            if not first:
-                output += ' '
-            first = False
-            
-            # parse expression and append to output
-            value = self.parse_expression()
-            output += self.stringify(value)
-            
-            # Check for "AN" to continue concatenation
-            if self.current_token() and self.current_token().type == TokenType.AN:
+            if token.type == TokenType.IDENTIFIER and self.peek() and self.peek().type == TokenType.R:
+                break
+            if token.type in [TokenType.PLUS, TokenType.AN]:
                 self.advance()
-        
-        # Append newline unless suppressed
-        if not suppress_newline:
-            output += '\n'
-        
-        # write output to console
-        self.write_console_callback(output)
-    
+                continue
+            value = self.parse_expression()
+            output_parts.append(self.stringify(value))
+            if self.current_token() and self.current_token().type in [TokenType.PLUS, TokenType.AN]:
+                continue
+            else:
+                break
+        output = ''.join(output_parts)
+        self.write_console_callback(output + '\n')
+
     # parse GIMMEH statement
     def parse_gimmeh(self):
-        self.advance()  # consume GIMMEH
+        self.advance()
         var_name = self.expect(TokenType.IDENTIFIER).value
-        
-        # check if variable is declared
         if var_name not in self.variables:
             raise NameError(f"Semantic Error: Variable '{var_name}' not declared")
-        
-        # read input from user
         input_value = self.read_input_callback(f"Enter value for {var_name}:")
         self.variables[var_name] = input_value
         self.update_symbol_callback(var_name, input_value)
+
+    # ... Keep all other functions unchanged from your last code (parse_if_then_else, parse_switch, parse_loop, parse_function_definition, parse_function_call, skip_expression, parse_type_cast, parse_expression, parse_binary_op, parse_variadic_numeric_op, parse_variadic_boolean_op, parse_all_of, to_number, is_truthy, stringify, cast_value)
+
+
     
     # parse IF-THEN-ELSE statement
     def parse_if_then_else(self):
@@ -301,8 +270,12 @@ class Parser:
     
     # parse loop statement
     def parse_loop(self):
-        self.advance()  # consume IM IN YR
-        loop_name = self.expect(TokenType.IDENTIFIER).value
+        self._in_loop = True
+        try:
+            self.advance()  # consume IM IN YR
+            loop_name = self.expect(TokenType.IDENTIFIER).value
+        finally:
+            self._in_loop = False
         
         # Check for operation (UPPIN or NERFIN)
         operation = None
@@ -430,52 +403,60 @@ class Parser:
     def parse_function_call(self):
         self.advance()  # consume I IZ
         func_name = self.expect(TokenType.IDENTIFIER).value
-        
-        # check if function is defined
+
         if func_name not in self.functions:
             raise NameError(f"Semantic Error: Function '{func_name}' not defined")
-        
+
         func_info = self.functions[func_name]
-        
-        # Parse arguments
+
+    # Parse arguments
         args = []
         while self.current_token() and self.current_token().type == TokenType.YR:
             self.advance()
-            arg_value = self.parse_expression()
-            args.append(arg_value)
+            args.append(self.parse_expression())
             if self.current_token() and self.current_token().type == TokenType.AN:
                 self.advance()
-        
+
         if self.current_token() and self.current_token().type == TokenType.MKAY:
             self.advance()
-        
-        # Check parameter count
+
         if len(args) != len(func_info['params']):
             raise ValueError(f"Function '{func_name}' expects {len(func_info['params'])} arguments, got {len(args)}")
-        
-        # Save current state
+
+    # Save global state
         saved_position = self.position
         saved_variables = self.variables.copy()
-        
-        # Set up parameters
-        for param, arg in zip(func_info['params'], args):
-            self.variables[param] = arg
-        
-        # Execute function
+        saved_IT = self.IT
+
+    # Prepare local function scope
+        local_scope = {param: arg for param, arg in zip(func_info['params'], args)}
+
+    # Execute function with temporary scope
         self.position = func_info['body_start']
         return_value = None
-        
+
         try:
             while self.position < func_info['body_end']:
+                token = self.current_token()
+                if not token:
+                    break
+            # Merge local parameters with globals for this statement
+                temp_scope = {**self.variables, **local_scope}
+                self.variables = temp_scope
                 self.parse_statement()
+            # After statement, remove local parameters to avoid overwriting globals
+                self.variables = saved_variables.copy()
         except ReturnException as e:
             return_value = e.value
-        
-        # Restore state
+
+    # Restore original state
         self.position = saved_position
         self.variables = saved_variables
-        
-        return return_value if return_value is not None else None
+        self.IT = return_value
+        self.update_symbol_callback('IT', self.IT)
+
+        return return_value
+
     
     # skip expression for constructs like loop conditions
     def skip_expression(self):
@@ -491,12 +472,16 @@ class Parser:
         elif token.type in [TokenType.SUM_OF, TokenType.DIFF_OF, TokenType.PRODUKT_OF,
                            TokenType.QUOSHUNT_OF, TokenType.MOD_OF, TokenType.BIGGR_OF,
                            TokenType.SMALLR_OF, TokenType.BOTH_OF, TokenType.EITHER_OF,
-                           TokenType.WON_OF, TokenType.BOTH_SAEM, TokenType.DIFFRINT]:
+                           TokenType.WON_OF, TokenType.BOTH_SAEM, TokenType.DIFFRINT, TokenType.ALL_OF]:
             self.advance()
             self.skip_expression()
-            if self.current_token() and self.current_token().type == TokenType.AN:
+            # consume chained AN expressions
+            while self.current_token() and self.current_token().type == TokenType.AN:
                 self.advance()
-            self.skip_expression()
+                self.skip_expression()
+            # optional MKAY
+            if self.current_token() and self.current_token().type == TokenType.MKAY:
+                self.advance()
         elif token.type == TokenType.NOT:
             self.advance()
             self.skip_expression()
@@ -557,37 +542,27 @@ class Parser:
             self.advance()
             return self.variables[var_name]
         
-        # Arithmetic operations
-        if token.type == TokenType.SUM_OF:
-            return self.parse_binary_op(lambda a, b: self.to_number(a) + self.to_number(b))
-        
-        if token.type == TokenType.DIFF_OF:
-            return self.parse_binary_op(lambda a, b: self.to_number(a) - self.to_number(b))
-        
-        if token.type == TokenType.PRODUKT_OF:
-            return self.parse_binary_op(lambda a, b: self.to_number(a) * self.to_number(b))
-        
-        if token.type == TokenType.QUOSHUNT_OF:
-            return self.parse_binary_op(lambda a, b: int(self.to_number(a) / self.to_number(b)) if self.to_number(b) != 0 else 0)
-        
-        if token.type == TokenType.MOD_OF:
-            return self.parse_binary_op(lambda a, b: self.to_number(a) % self.to_number(b) if self.to_number(b) != 0 else 0)
-        
-        if token.type == TokenType.BIGGR_OF:
-            return self.parse_binary_op(lambda a, b: max(self.to_number(a), self.to_number(b)))
-        
-        if token.type == TokenType.SMALLR_OF:
-            return self.parse_binary_op(lambda a, b: min(self.to_number(a), self.to_number(b)))
+        # Arithmetic and comparison operations (variadic where applicable)
+        if token.type in [TokenType.SUM_OF, TokenType.DIFF_OF, TokenType.PRODUKT_OF,
+                          TokenType.QUOSHUNT_OF, TokenType.MOD_OF, TokenType.BIGGR_OF,
+                          TokenType.SMALLR_OF]:
+            return self.parse_variadic_numeric_op(token.type)
         
         # Boolean operations
+        if token.type == TokenType.ALL_OF:
+            return self.parse_all_of()
+        
+        if token.type == TokenType.ANY_OF:
+            return self.parse_variadic_boolean_op(token.type)
+
         if token.type == TokenType.BOTH_OF:
-            return self.parse_binary_op(lambda a, b: self.is_truthy(a) and self.is_truthy(b))
+            return self.parse_variadic_boolean_op(token.type)
         
         if token.type == TokenType.EITHER_OF:
-            return self.parse_binary_op(lambda a, b: self.is_truthy(a) or self.is_truthy(b))
+            return self.parse_variadic_boolean_op(token.type)
         
         if token.type == TokenType.WON_OF:
-            return self.parse_binary_op(lambda a, b: self.is_truthy(a) != self.is_truthy(b))
+            return self.parse_variadic_boolean_op(token.type)
         
         if token.type == TokenType.NOT:
             self.advance()
@@ -628,13 +603,129 @@ class Parser:
         
         raise SyntaxError(f"Syntax Error at line {token.line}: Unexpected token {token.type.value}")
     
-    # parse binary operation
+    # parse binary operation (two-arg)
     def parse_binary_op(self, operation):
         self.advance()
         left = self.parse_expression()
+        # accept AN separator
         self.expect(TokenType.AN)
         right = self.parse_expression()
+        # optional MKAY
+        if self.current_token() and self.current_token().type == TokenType.MKAY:
+            self.advance()
         return operation(left, right)
+    
+    # parse variadic numeric operations like SUM OF, PRODUKT OF, etc.
+    def parse_variadic_numeric_op(self, op_type):
+        # consume operator token
+        self.advance()
+        # first operand
+        first = self.parse_expression()
+        args = [first]
+        # collect additional operands separated by AN
+        while self.current_token() and self.current_token().type == TokenType.AN:
+            self.advance()
+            args.append(self.parse_expression())
+        # optional MKAY (consume if present)
+        if self.current_token() and self.current_token().type == TokenType.MKAY:
+            self.advance()
+        # reduce based on op_type
+        if op_type == TokenType.SUM_OF:
+            result = 0
+            for a in args:
+                result = self.to_number(result) + self.to_number(a)
+            return result
+        if op_type == TokenType.DIFF_OF:
+            # left-associative: (((a - b) - c) - ...)
+            result = self.to_number(args[0])
+            for a in args[1:]:
+                result = result - self.to_number(a)
+            return result
+        if op_type == TokenType.PRODUKT_OF:
+            result = 1
+            for a in args:
+                result = self.to_number(result) * self.to_number(a)
+            return result
+        if op_type == TokenType.QUOSHUNT_OF:
+            result = self.to_number(args[0])
+            for a in args[1:]:
+                denom = self.to_number(a)
+                if denom == 0:
+                    result = 0
+                else:
+                    # integer division
+                    result = int(result / denom)
+            return result
+        if op_type == TokenType.MOD_OF:
+            result = self.to_number(args[0])
+            for a in args[1:]:
+                denom = self.to_number(a)
+                if denom == 0:
+                    result = 0
+                else:
+                    result = result % denom
+            return result
+        if op_type == TokenType.BIGGR_OF:
+            result = self.to_number(args[0])
+            for a in args[1:]:
+                result = max(result, self.to_number(a))
+            return result
+        if op_type == TokenType.SMALLR_OF:
+            result = self.to_number(args[0])
+            for a in args[1:]:
+                result = min(result, self.to_number(a))
+            return result
+        return None
+    
+    # parse variadic boolean ops (ANY_OF, BOTH_OF, EITHER_OF, WON_OF)
+    def parse_variadic_boolean_op(self, op_type):
+        self.advance()
+        first = self.parse_expression()
+        args = [first]
+        while self.current_token() and self.current_token().type == TokenType.AN:
+            self.advance()
+            args.append(self.parse_expression())
+        # optional MKAY
+        if self.current_token() and self.current_token().type == TokenType.MKAY:
+            self.advance()
+        # evaluate
+        if op_type == TokenType.BOTH_OF:
+            # logical AND across all
+            for a in args:
+                if not self.is_truthy(a):
+                    return False
+            return True
+        if op_type == TokenType.ANY_OF or op_type == TokenType.EITHER_OF:
+            for a in args:
+                if self.is_truthy(a):
+                    return True
+            return False
+        if op_type == TokenType.WON_OF:
+            # XOR across arguments: True if an odd number of truthy args
+            count = 0
+            for a in args:
+                if self.is_truthy(a):
+                    count += 1
+            return (count % 2) == 1
+        return False
+    
+    # parse ALL OF (special variadic that defaults to True and short-circuits)
+    def parse_all_of(self):
+        self.advance()
+        result = True
+        while True:
+            value = self.parse_expression()
+            if not self.is_truthy(value):
+                result = False
+            # Continue if AN separator is detected
+            if self.current_token() and self.current_token().type == TokenType.AN:
+                self.advance()
+                continue
+            break
+        # optional MKAY
+        if self.current_token() and self.current_token().type == TokenType.MKAY:
+            self.advance()
+        return result
     
     # utility function to convert value to number
     def to_number(self, value):
@@ -686,4 +777,5 @@ class Parser:
             return self.stringify(value)
         elif type_upper == 'TROOF':
             return self.is_truthy(value)
+        
         return value
