@@ -134,7 +134,6 @@ class Parser:
         self.update_symbol_callback('IT', self.IT)
 
     # parse VISIBLE statement
-    # parse VISIBLE statement
     def parse_visible(self):
         self.advance()
         output_parts = []
@@ -142,14 +141,14 @@ class Parser:
         while self.current_token():
             token = self.current_token()
             
-            # Break on statement-ending tokens
+            # Break on statement-ending tokens - CHECK THIS FIRST
             if token.type in [TokenType.GIMMEH, TokenType.KTHXBYE,
                             TokenType.YA_RLY, TokenType.NO_WAI,
                             TokenType.OIC, TokenType.O_RLY,
                             TokenType.IM_OUTTA_YR, TokenType.OMG,
                             TokenType.OMGWTF, TokenType.GTFO,
                             TokenType.VISIBLE, TokenType.BTW,
-                            TokenType.IM_IN_YR]:
+                            TokenType.IM_IN_YR, TokenType.MEBBE]:  # Added MEBBE for completeness
                 break
                 
             # Break on assignment statement
