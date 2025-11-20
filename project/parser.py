@@ -148,7 +148,7 @@ class Parser:
                             TokenType.IM_OUTTA_YR, TokenType.OMG,
                             TokenType.OMGWTF, TokenType.GTFO,
                             TokenType.VISIBLE, TokenType.BTW,
-                            TokenType.IM_IN_YR, TokenType.MEBBE]:  # Added MEBBE for completeness
+                            TokenType.IM_IN_YR]:
                 break
                 
             # Break on assignment statement
@@ -183,10 +183,6 @@ class Parser:
         self.variables[var_name] = input_value
         self.update_symbol_callback(var_name, input_value)
 
-    # ... Keep all other functions unchanged from your last code (parse_if_then_else, parse_switch, parse_loop, parse_function_definition, parse_function_call, skip_expression, parse_type_cast, parse_expression, parse_binary_op, parse_variadic_numeric_op, parse_variadic_boolean_op, parse_all_of, to_number, is_truthy, stringify, cast_value)
-
-
-    
     # parse IF-THEN-ELSE statement
     def parse_if_then_else(self):
         self.advance()  # consume O RLY?
@@ -440,10 +436,11 @@ class Parser:
         saved_variables = self.variables.copy()
         saved_IT = self.IT
 
-    # Prepare local function scope
+    # Prepare local function scope - ONLY parameters, no globals
         local_scope = {param: arg for param, arg in zip(func_info['params'], args)}
+        local_scope['IT'] = None 
 
-    # Execute function with temporary scope
+        # Execute function with isolated scope
         self.position = func_info['body_start']
         return_value = None
 
@@ -452,16 +449,18 @@ class Parser:
                 token = self.current_token()
                 if not token:
                     break
-            # Merge local parameters with globals for this statement
-                temp_scope = {**self.variables, **local_scope}
-                self.variables = temp_scope
+                
+                # Use ONLY local scope during function execution
+                self.variables = local_scope.copy() 
                 self.parse_statement()
-            # After statement, remove local parameters to avoid overwriting globals
-                self.variables = saved_variables.copy()
+                
+                # Update local_scope with any changes from the statement
+                local_scope = self.variables.copy()
+                
         except ReturnException as e:
             return_value = e.value
 
-    # Restore original state
+        # Restore original state
         self.position = saved_position
         self.variables = saved_variables
         self.IT = return_value
