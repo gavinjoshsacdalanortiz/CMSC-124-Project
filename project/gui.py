@@ -29,6 +29,7 @@ class LOLCodeInterpreterGUI:
             'text_primary': '#FFFFFF',   # light cyan
             'text_secondary': '#ED455D', # coral red
             'text_button': '#FFFFFF',    # light cyan
+            'console_text': '#F5F543',   # light cyan
             
             # UI colors
             'selection': '#264F78',      # selection blue
@@ -91,7 +92,7 @@ class LOLCodeInterpreterGUI:
                 fieldbackground=self.colors['bg_dark'],
                 borderwidth=0,
                 rowheight=25,
-                font=('Ubuntu Condensed', 10),
+                font=('Helvetica', 10),
                 highlightthickness=0,
                 relief='flat')
         style.configure('Modern.Treeview.Heading',
@@ -99,7 +100,7 @@ class LOLCodeInterpreterGUI:
                 foreground=self.colors['text_secondary'],
                 borderwidth=0,
                 relief='flat',
-                font=('Ubuntu Condensed', 10, 'bold'),
+                font=('Helvetica', 10, 'bold'),
                 highlightthickness=0)
         style.map('Modern.Treeview',
                  background=[('selected', self.colors['selection'])],
@@ -168,7 +169,7 @@ class LOLCodeInterpreterGUI:
     
     # creates panel with title and content area
     def create_panel(self, parent, title):
-        panel = tk.Frame(parent, bg=self.colors['bg_dark'], bd=0)  # Changed from 'border' to 'bg_dark'
+        panel = tk.Frame(parent, bg=self.colors['bg_dark'], bd=0) 
         panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
         
         # title bar
@@ -182,7 +183,7 @@ class LOLCodeInterpreterGUI:
         title_label.pack(side=tk.LEFT, padx=12, pady=8)
         
         # content area
-        content = tk.Frame(panel, bg=self.colors['bg_dark'])  # Changed from 'bg_darkest' to 'bg_dark'
+        content = tk.Frame(panel, bg=self.colors['bg_dark'])
         content.pack(fill=tk.BOTH, expand=True)
         
         return content
@@ -304,8 +305,8 @@ class LOLCodeInterpreterGUI:
         
         self.console = tk.Text(text_frame, wrap=tk.WORD,
                               bg=self.colors['bg_darkest'],
-                              fg=self.colors['text_primary'],
-                              font=('Ubuntu Condensed', 10),
+                              fg=self.colors['console_text'],
+                              font=('Helvetica', 10),
                               insertbackground=self.colors['text_secondary'],
                               selectbackground=self.colors['selection'],
                               bd=0, padx=12, pady=12,
@@ -382,6 +383,7 @@ class LOLCodeInterpreterGUI:
             
             # Display tokens
             for token in tokens:
+                print(token)
                 self.tokens_tree.insert('', tk.END,
                                        values=(token.value, token.type.value))
             
@@ -391,6 +393,6 @@ class LOLCodeInterpreterGUI:
             parser.parse()
                         
         except (SyntaxError, NameError, ValueError, Exception) as e:
-            error_msg = f"✗ Error: {str(e)}\n"
+            error_msg = f"Error: {str(e)}\n"
             self.write_to_console(error_msg)
             messagebox.showerror("Execution Error", str(e))
