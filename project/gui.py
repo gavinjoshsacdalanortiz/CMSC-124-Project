@@ -22,13 +22,13 @@ class LOLCodeInterpreterGUI:
             
             # accent colors
             'accent_primary': '#ED455D', # coral red
-            'accent_hover': '#56DCE7',   # light cyan
-            'border': '#56DCE7',         # light cyan
+            'accent_hover': '#FFFFFF',   # light cyan
+            'border': '#FFFFFF',         # light cyan
             
             # text colors
-            'text_primary': '#56DCE7',   # light cyan
+            'text_primary': '#FFFFFF',   # light cyan
             'text_secondary': '#ED455D', # coral red
-            'text_button': '#56DCE7',    # light cyan
+            'text_button': '#FFFFFF',    # light cyan
             
             # UI colors
             'selection': '#264F78',      # selection blue
