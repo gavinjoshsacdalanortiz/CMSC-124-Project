@@ -23,7 +23,7 @@ class LOLCodeInterpreterGUI:
             # accent colors
             'accent_primary': '#ED455D', # coral red
             'accent_hover': '#FFFFFF',   # light cyan
-            'border': '#FFFFFF',         # light cyan
+            'border': '#ED455D',         # light cyan
             
             # text colors
             'text_primary': '#FFFFFF',   # light cyan
@@ -86,19 +86,21 @@ class LOLCodeInterpreterGUI:
         
         # treeview style
         style.configure('Modern.Treeview',
-                       background=self.colors['bg_dark'],
-                       foreground=self.colors['text_primary'],
-                       fieldbackground=self.colors['bg_dark'],
-                       borderwidth=0,
-                       rowheight=25,
-                       font=('Consolas', 10),
-                       highlightthickness=0)
+                background=self.colors['bg_dark'],
+                foreground=self.colors['text_primary'],
+                fieldbackground=self.colors['bg_dark'],
+                borderwidth=0,
+                rowheight=25,
+                font=('Ubuntu Condensed', 10),
+                highlightthickness=0,
+                relief='flat')
         style.configure('Modern.Treeview.Heading',
-                       background=self.colors['bg_medium'],
-                       foreground=self.colors['text_secondary'],
-                       borderwidth=0,
-                       relief='flat',
-                       font=('Segoe UI', 10, 'bold'))
+                background=self.colors['bg_medium'],
+                foreground=self.colors['text_secondary'],
+                borderwidth=0,
+                relief='flat',
+                font=('Ubuntu Condensed', 10, 'bold'),
+                highlightthickness=0)
         style.map('Modern.Treeview',
                  background=[('selected', self.colors['selection'])],
                  foreground=[('selected', self.colors['text_primary'])])
@@ -138,12 +140,12 @@ class LOLCodeInterpreterGUI:
         
         title = tk.Label(left_frame, text="LOLCODE", 
                         bg=self.colors['bg_light'], fg=self.colors['accent_primary'],
-                        font=('Consolas', 18, 'bold'))
+                        font=('Ubuntu Condensed', 18, 'bold'))
         title.pack(side=tk.LEFT)
         
         subtitle = tk.Label(left_frame, text=" Interpreter", 
                            bg=self.colors['bg_light'], fg=self.colors['text_primary'],
-                           font=('Segoe UI', 18))
+                           font=('Ubuntu Condensed', 18))
         subtitle.pack(side=tk.LEFT)
         
         # right side (file controls)
@@ -152,20 +154,21 @@ class LOLCodeInterpreterGUI:
         
         self.file_label = tk.Label(controls_frame, text="No file loaded",
                                    bg=self.colors['bg_light'], fg=self.colors['text_primary'],
-                                   font=('Segoe UI', 9))
+                                   font=('Ubuntu Condensed', 9))
         self.file_label.pack(side=tk.RIGHT, padx=(15, 0))
         
         open_btn = tk.Button(controls_frame, text="Open File", command=self.open_file,
-                           bg=self.colors['accent_primary'], fg=self.colors['text_button'],
-                           font=('Segoe UI', 10, 'bold'), bd=0,
-                           padx=18, pady=6, cursor='hand2',
-                           activebackground=self.colors['text_button'],
-                           activeforeground=self.colors['accent_primary'])
+                    bg=self.colors['accent_primary'], fg=self.colors['text_button'],
+                    font=('Ubuntu Condensed', 10, 'bold'), bd=0,
+                    padx=18, pady=6, cursor='hand2',
+                    activebackground=self.colors['text_button'],
+                    activeforeground=self.colors['accent_primary'],
+                    highlightthickness=0)
         open_btn.pack(side=tk.RIGHT)
     
     # creates panel with title and content area
     def create_panel(self, parent, title):
-        panel = tk.Frame(parent, bg=self.colors['border'], bd=0)
+        panel = tk.Frame(parent, bg=self.colors['bg_dark'], bd=0)  # Changed from 'border' to 'bg_dark'
         panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
         
         # title bar
@@ -175,11 +178,11 @@ class LOLCodeInterpreterGUI:
         
         title_label = tk.Label(title_bar, text=title,
                               bg=self.colors['bg_medium'], fg=self.colors['text_primary'],
-                              font=('Segoe UI', 10))
+                              font=('Ubuntu Condensed', 12, 'bold'))
         title_label.pack(side=tk.LEFT, padx=12, pady=8)
         
         # content area
-        content = tk.Frame(panel, bg=self.colors['bg_darkest'])
+        content = tk.Frame(panel, bg=self.colors['bg_dark'])  # Changed from 'bg_darkest' to 'bg_dark'
         content.pack(fill=tk.BOTH, expand=True)
         
         return content
@@ -202,7 +205,7 @@ class LOLCodeInterpreterGUI:
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         self.text_editor = tk.Text(text_frame, wrap=tk.WORD,
-                                   font=('Consolas', 11),
+                                   font=('Helvetica', 11),
                                    bg=self.colors['bg_darkest'],
                                    fg=self.colors['text_primary'],
                                    insertbackground=self.colors['text_secondary'],
@@ -218,7 +221,7 @@ class LOLCodeInterpreterGUI:
     def create_lexemes_section(self, parent):
         content = self.create_panel(parent, "Lexemes")
         
-        tree_frame = tk.Frame(content, bg=self.colors['bg_darkest'])
+        tree_frame = tk.Frame(content, bg=self.colors['bg_dark'])
         tree_frame.pack(fill=tk.BOTH, expand=True)
         
         scrollbar = self.create_custom_scrollbar(tree_frame)
@@ -240,7 +243,7 @@ class LOLCodeInterpreterGUI:
     def create_symbol_table_section(self, parent):
         content = self.create_panel(parent, "Symbol Table")
         
-        tree_frame = tk.Frame(content, bg=self.colors['bg_darkest'])
+        tree_frame = tk.Frame(content, bg=self.colors['bg_dark']) 
         tree_frame.pack(fill=tk.BOTH, expand=True)
         
         scrollbar = self.create_custom_scrollbar(tree_frame)
@@ -264,12 +267,13 @@ class LOLCodeInterpreterGUI:
         execute_frame.pack(fill=tk.X, pady=(0, 10))
         
         execute_btn = tk.Button(execute_frame, text="▶ Execute",
-                               command=self.execute_code,
-                               bg=self.colors['accent_primary'], fg=self.colors['text_button'],
-                               font=('Segoe UI', 11, 'bold'), bd=0,
-                               padx=25, pady=10, cursor='hand2',
-                               activebackground=self.colors['text_button'],
-                               activeforeground=self.colors['accent_primary'])
+                        command=self.execute_code,
+                        bg=self.colors['accent_primary'], fg=self.colors['text_button'],
+                        font=('Ubuntu Condensed', 11, 'bold'), bd=0,
+                        padx=25, pady=10, cursor='hand2',
+                        activebackground=self.colors['text_button'],
+                        activeforeground=self.colors['accent_primary'],
+                        highlightthickness=0)
         execute_btn.pack(fill=tk.X, padx=5)
     
     # creates console section
@@ -282,9 +286,9 @@ class LOLCodeInterpreterGUI:
         console_header.pack(fill=tk.X)
         console_header.pack_propagate(False)
         
-        console_label = tk.Label(console_header, text="Console",
-                                bg=self.colors['bg_medium'], fg=self.colors['text_primary'],
-                                font=('Segoe UI', 10))
+        console_label = tk.Label(console_header, text='Console',
+                              bg=self.colors['bg_medium'], fg=self.colors['text_primary'],
+                              font=('Ubuntu Condensed', 12, 'bold'))
         console_label.pack(side=tk.LEFT, padx=12, pady=8)
         
         # console content
@@ -301,7 +305,7 @@ class LOLCodeInterpreterGUI:
         self.console = tk.Text(text_frame, wrap=tk.WORD,
                               bg=self.colors['bg_darkest'],
                               fg=self.colors['text_primary'],
-                              font=('Consolas', 10),
+                              font=('Ubuntu Condensed', 10),
                               insertbackground=self.colors['text_secondary'],
                               selectbackground=self.colors['selection'],
                               bd=0, padx=12, pady=12,
