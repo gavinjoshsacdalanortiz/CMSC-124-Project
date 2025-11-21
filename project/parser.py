@@ -148,7 +148,9 @@ class Parser:
                             TokenType.IM_OUTTA_YR, TokenType.OMG,
                             TokenType.OMGWTF, TokenType.GTFO,
                             TokenType.VISIBLE, TokenType.BTW, TokenType.IS_NOW_A,
-                            TokenType.I_HAS_A, TokenType.IM_IN_YR]:
+                            TokenType.I_HAS_A, TokenType.IM_IN_YR,
+                            TokenType.I_IZ, TokenType.FOUND_YR, 
+                            TokenType.HOW_IZ_I, TokenType.IF_U_SAY_SO]: 
                 break
                 
             # Break on assignment statement
@@ -468,6 +470,9 @@ class Parser:
         self.position = saved_position
         self.variables = saved_variables
         self.IT = return_value
+        
+        # Update IT in dictionary
+        self.variables['IT'] = self.IT 
         self.update_symbol_callback('IT', self.IT)
 
         return return_value
