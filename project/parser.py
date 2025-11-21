@@ -147,12 +147,16 @@ class Parser:
                             TokenType.OIC, TokenType.O_RLY,
                             TokenType.IM_OUTTA_YR, TokenType.OMG,
                             TokenType.OMGWTF, TokenType.GTFO,
-                            TokenType.VISIBLE, TokenType.BTW,
-                            TokenType.IM_IN_YR]:
+                            TokenType.VISIBLE, TokenType.BTW, TokenType.IS_NOW_A,
+                            TokenType.I_HAS_A, TokenType.IM_IN_YR]:
                 break
                 
             # Break on assignment statement
             if token.type == TokenType.IDENTIFIER and self.peek() and self.peek().type == TokenType.R:
+                break
+            
+            # Break on type cast statement
+            if token.type == TokenType.IDENTIFIER and self.peek() and self.peek().type == TokenType.IS_NOW_A:
                 break
             
             # Skip AN separator (explicit concatenation)
@@ -233,7 +237,7 @@ class Parser:
                 
                 # check for match if not already matched or in default
                 if not found_match and not in_omgwtf:
-                    if switch_value == case_value:
+                    if self.values_equal(switch_value, case_value):
                         found_match = True
                         # Execute this case
                         while (self.current_token() and 
@@ -582,10 +586,10 @@ class Parser:
         
         # Comparison
         if token.type == TokenType.BOTH_SAEM:
-            return self.parse_binary_op(lambda a, b: a == b)
-        
+            return self.parse_comparison_op(TokenType.BOTH_SAEM)
+
         if token.type == TokenType.DIFFRINT:
-            return self.parse_binary_op(lambda a, b: a != b)
+            return self.parse_comparison_op(TokenType.DIFFRINT)
         
         # String concatenation
         if token.type == TokenType.SMOOSH:
@@ -608,11 +612,38 @@ class Parser:
             
             return result
         
+        if token.type == TokenType.MAEK:
+            self.advance()
+            value = self.parse_expression()
+            self.expect(TokenType.A)
+            type_name = self.current_token().value
+            self.advance()
+            return self.cast_value(value, type_name)
+        
         # Function call as expression
         if token.type == TokenType.I_IZ:
             return self.parse_function_call()
         
         raise SyntaxError(f"Syntax Error at line {token.line}: Unexpected token {token.type.value}")
+    
+    # parse comparison operation with type coercion
+    def parse_comparison_op(self, op_type):
+        self.advance()
+        left = self.parse_expression()
+        # accept AN separator
+        self.expect(TokenType.AN)
+        right = self.parse_expression()
+        # optional MKAY
+        if self.current_token() and self.current_token().type == TokenType.MKAY:
+            self.advance()
+        
+        # Use values_equal for proper type coercion
+        if op_type == TokenType.BOTH_SAEM:
+            return self.values_equal(left, right)
+        elif op_type == TokenType.DIFFRINT:
+            return not self.values_equal(left, right)
+        
+        return False
     
     # parse binary operation (two-arg)
     def parse_binary_op(self, operation):
@@ -633,13 +664,23 @@ class Parser:
         # first operand
         first = self.parse_expression()
         args = [first]
-        # collect additional operands separated by AN
-        while self.current_token() and self.current_token().type == TokenType.AN:
-            self.advance()
+        
+        # For BIGGR OF and SMALLR OF, only take exactly 2 operands (binary)
+        if op_type in [TokenType.BIGGR_OF, TokenType.SMALLR_OF]:
+            self.expect(TokenType.AN)
             args.append(self.parse_expression())
-        # optional MKAY (consume if present)
-        if self.current_token() and self.current_token().type == TokenType.MKAY:
-            self.advance()
+            # optional MKAY (consume if present)
+            if self.current_token() and self.current_token().type == TokenType.MKAY:
+                self.advance()
+        else:
+            # collect additional operands separated by AN for truly variadic operations
+            while self.current_token() and self.current_token().type == TokenType.AN:
+                self.advance()
+                args.append(self.parse_expression())
+            # optional MKAY (consume if present)
+            if self.current_token() and self.current_token().type == TokenType.MKAY:
+                self.advance()
+        
         # reduce based on op_type
         if op_type == TokenType.SUM_OF:
             result = 0
@@ -790,3 +831,20 @@ class Parser:
             return self.is_truthy(value)
         
         return value
+    
+    # Add this method to the Parser class
+    def values_equal(self, val1, val2):
+        # compare two values for equality with type coercion
+        # If both are the same type, direct comparison
+        if type(val1) == type(val2):
+            return val1 == val2
+        
+        # try numeric comparison if one is string and one is number
+        try:
+            # convert both to numbers and compare
+            num1 = self.to_number(val1)
+            num2 = self.to_number(val2)
+            return num1 == num2
+        except:
+            # if fails, they're not equal
+            return False

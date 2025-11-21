@@ -30,16 +30,16 @@ class Lexer:
             stripped = line.strip() # Remove leading/trailing whitespace
 
             # Handle comments
-            if stripped.startswith("BTW ") or stripped == "":
+            if stripped.startswith("BTW") or stripped == "":
                 self.line_number += 1
                 continue
-            
+
             # Handle start/end of multi-line comments
-            if stripped.startswith("OBTW "):
+            if stripped.startswith("OBTW"):
                 in_multiline_comment = True
                 self.line_number += 1
                 continue
-            
+
             # Handle end of multi-line comment
             if stripped.startswith("TLDR"):
                 in_multiline_comment = False
