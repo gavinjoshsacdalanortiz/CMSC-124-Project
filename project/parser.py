@@ -657,77 +657,47 @@ class Parser:
             self.advance()
         return operation(left, right)
     
-    # parse variadic numeric operations like SUM OF, PRODUKT OF, etc.
+   # parse numeric operations (strictly binary to prevent nesting issues)
     def parse_variadic_numeric_op(self, op_type):
         # consume operator token
         self.advance()
-        # first operand
-        first = self.parse_expression()
-        args = [first]
         
-        # For BIGGR OF and SMALLR OF, only take exactly 2 operands (binary)
-        if op_type in [TokenType.BIGGR_OF, TokenType.SMALLR_OF]:
-            self.expect(TokenType.AN)
-            args.append(self.parse_expression())
-            # optional MKAY (consume if present)
-            if self.current_token() and self.current_token().type == TokenType.MKAY:
-                self.advance()
-        else:
-            # collect additional operands separated by AN for truly variadic operations
-            while self.current_token() and self.current_token().type == TokenType.AN:
-                self.advance()
-                args.append(self.parse_expression())
-            # optional MKAY (consume if present)
-            if self.current_token() and self.current_token().type == TokenType.MKAY:
-                self.advance()
+        # First operand
+        left = self.parse_expression()
         
-        # reduce based on op_type
+        # Expect AN separator for binary operation
+        self.expect(TokenType.AN)
+        
+        # Second operand
+        right = self.parse_expression()
+        
+        # Optional MKAY (consume if present)
+        if self.current_token() and self.current_token().type == TokenType.MKAY:
+            self.advance()
+            
+        val1 = self.to_number(left)
+        val2 = self.to_number(right)
+        
         if op_type == TokenType.SUM_OF:
-            result = 0
-            for a in args:
-                result = self.to_number(result) + self.to_number(a)
-            return result
-        if op_type == TokenType.DIFF_OF:
-            # left-associative: (((a - b) - c) - ...)
-            result = self.to_number(args[0])
-            for a in args[1:]:
-                result = result - self.to_number(a)
-            return result
-        if op_type == TokenType.PRODUKT_OF:
-            result = 1
-            for a in args:
-                result = self.to_number(result) * self.to_number(a)
-            return result
-        if op_type == TokenType.QUOSHUNT_OF:
-            result = self.to_number(args[0])
-            for a in args[1:]:
-                denom = self.to_number(a)
-                if denom == 0:
-                    result = 0
-                else:
-                    # integer division
-                    result = int(result / denom)
-            return result
-        if op_type == TokenType.MOD_OF:
-            result = self.to_number(args[0])
-            for a in args[1:]:
-                denom = self.to_number(a)
-                if denom == 0:
-                    result = 0
-                else:
-                    result = result % denom
-            return result
-        if op_type == TokenType.BIGGR_OF:
-            result = self.to_number(args[0])
-            for a in args[1:]:
-                result = max(result, self.to_number(a))
-            return result
-        if op_type == TokenType.SMALLR_OF:
-            result = self.to_number(args[0])
-            for a in args[1:]:
-                result = min(result, self.to_number(a))
-            return result
-        return None
+            return val1 + val2
+        elif op_type == TokenType.DIFF_OF:
+            return val1 - val2
+        elif op_type == TokenType.PRODUKT_OF:
+            return val1 * val2
+        elif op_type == TokenType.QUOSHUNT_OF:
+            if val2 == 0:
+                return 0
+            return int(val1 / val2)
+        elif op_type == TokenType.MOD_OF:
+            if val2 == 0:
+                return 0
+            return val1 % val2
+        elif op_type == TokenType.BIGGR_OF:
+            return max(val1, val2)
+        elif op_type == TokenType.SMALLR_OF:
+            return min(val1, val2)
+            
+        return 0
     
     # parse variadic boolean ops (ANY_OF, BOTH_OF, EITHER_OF, WON_OF)
     def parse_variadic_boolean_op(self, op_type):

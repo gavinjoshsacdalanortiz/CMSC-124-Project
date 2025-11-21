@@ -16,7 +16,7 @@ HAI
 
     BTW print literals and variables
     VISIBLE "declarations"
-    VISIBLE monde should be NOOB
+    VISIBLE monde + " should be NOOB"
     VISIBLE num
     VISIBLE name
     VISIBLE fnum
