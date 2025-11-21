@@ -832,7 +832,6 @@ class Parser:
         
         return value
     
-    # Add this method to the Parser class
     def values_equal(self, val1, val2):
         # compare two values for equality with type coercion
         # If both are the same type, direct comparison

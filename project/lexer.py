@@ -30,7 +30,7 @@ class Lexer:
             stripped = line.strip() # Remove leading/trailing whitespace
 
             # Handle comments
-            if stripped.startswith("BTW") or stripped == "":
+            if stripped.startswith("BTW"+"") or stripped == "":
                 self.line_number += 1
                 continue
 
