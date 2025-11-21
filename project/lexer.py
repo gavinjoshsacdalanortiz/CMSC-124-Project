@@ -29,10 +29,12 @@ class Lexer:
             column = 1 # Track column number for error reporting
             stripped = line.strip() # Remove leading/trailing whitespace
 
-            # Handle comments
-            if stripped.startswith("BTW"+"") or stripped == "":
-                self.line_number += 1
-                continue
+            # Handle single-line comments - BTW must be followed by whitespace or end of line
+            if stripped.startswith("BTW"):
+                # Check if BTW is followed by end of string or whitespace
+                if len(stripped) == 3 or stripped[3].isspace():
+                    self.line_number += 1
+                    continue
 
             # Handle start/end of multi-line comments
             if stripped.startswith("OBTW"):
