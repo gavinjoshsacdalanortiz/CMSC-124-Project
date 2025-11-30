@@ -29,13 +29,6 @@ class Lexer:
             column = 1 # Track column number for error reporting
             stripped = line.strip() # Remove leading/trailing whitespace
 
-            # Handle single-line comments - BTW must be followed by whitespace or end of line
-            if stripped.startswith("BTW"):
-                # Check if BTW is followed by end of string or whitespace
-                if len(stripped) == 3 or stripped[3].isspace():
-                    self.line_number += 1
-                    continue
-
             # Handle start/end of multi-line comments
             if stripped.startswith("OBTW"):
                 in_multiline_comment = True
@@ -60,6 +53,14 @@ class Lexer:
             
             # Process characters in the line
             while i < line_length:
+                # Check for BTW comment - stop processing rest of line
+                # BTW must be followed by whitespace or end of line
+                if i + 3 <= line_length and stripped[i:i+3].upper() == "BTW":
+                    # Check if BTW is followed by end of string or whitespace
+                    if i + 3 >= line_length or stripped[i+3].isspace():
+                        # Rest of line is a comment, stop processing
+                        break
+                
                 # Skip whitespace
                 if stripped[i].isspace():
                     i += 1

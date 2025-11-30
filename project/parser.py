@@ -97,10 +97,10 @@ class Parser:
             self.parse_loop()
         elif token.type == TokenType.GTFO:
             self.advance()
-            if getattr(self, "_in_loop", False):
-                raise BreakException()
-            else:
+            if getattr(self, "_in_function", False):
                 raise ReturnException(None)
+            else:
+                raise BreakException()
         elif token.type == TokenType.FOUND_YR:
             self.advance()
             value = self.parse_expression()
@@ -223,22 +223,29 @@ class Parser:
         self.expect(TokenType.OIC)
     
     # parse SWITCH statement
+
     def parse_switch(self):
         self.advance()  # consume WTF?
         
         switch_value = self.IT
-        found_match = False # flag for found matching case
-        in_omgwtf = False # flag for default case
+        found_match = False  # flag for found matching case
+        in_omgwtf = False  # flag for default case
+        should_break = False  # flag to break out after GTFO
         
         # process cases until OIC
         while self.current_token() and self.current_token().type != TokenType.OIC:
+            # If we already hit GTFO, skip to OIC
+            if should_break:
+                self.advance()
+                continue
+                
             # handle OMG case
             if self.current_token().type == TokenType.OMG:
                 self.advance()
                 case_value = self.parse_expression()
                 
                 # check for match if not already matched or in default
-                if not found_match and not in_omgwtf:
+                if not found_match and not in_omgwtf and not should_break:
                     if self.values_equal(switch_value, case_value):
                         found_match = True
                         # Execute this case
@@ -247,9 +254,8 @@ class Parser:
                             try:
                                 self.parse_statement()
                             except BreakException:
-                                # GTFO encountered, break out of switch
-                                while self.current_token() and self.current_token().type != TokenType.OIC:
-                                    self.advance()
+                                # GTFO encountered, skip to OIC
+                                should_break = True
                                 break
                     else:
                         # Skip this case
@@ -257,7 +263,7 @@ class Parser:
                                self.current_token().type not in [TokenType.OMG, TokenType.OMGWTF, TokenType.OIC]):
                             self.advance()
                 else:
-                    # Already found match or in default, skip
+                    # Already found match or should break, skip this case
                     while (self.current_token() and 
                            self.current_token().type not in [TokenType.OMG, TokenType.OMGWTF, TokenType.OIC]):
                         self.advance()
@@ -266,15 +272,20 @@ class Parser:
             elif self.current_token().type == TokenType.OMGWTF:
                 self.advance()
                 in_omgwtf = True
-                if not found_match:
+                if not found_match and not should_break:
                     # Execute default case
-                    while self.current_token() and self.current_token().type != TokenType.OIC:
+                    while (self.current_token() and 
+                           self.current_token().type not in [TokenType.OIC]):
                         try:
                             self.parse_statement()
                         except BreakException:
-                            while self.current_token() and self.current_token().type != TokenType.OIC:
-                                self.advance()
+                            should_break = True
                             break
+                else:
+                    # Already found match or should break, skip default
+                    while (self.current_token() and 
+                           self.current_token().type not in [TokenType.OIC]):
+                        self.advance()
             else:
                 self.advance()
         
@@ -284,93 +295,98 @@ class Parser:
     
     # parse loop statement
     def parse_loop(self):
+        self.advance()  # consume IM IN YR
+        loop_name = self.expect(TokenType.IDENTIFIER).value
+        
+        # Save the previous loop state and set current loop flag
+        old_in_loop = getattr(self, "_in_loop", False)
         self._in_loop = True
+        
         try:
-            self.advance()  # consume IM IN YR
-            loop_name = self.expect(TokenType.IDENTIFIER).value
-        finally:
-            self._in_loop = False
-        
-        # Check for operation (UPPIN or NERFIN)
-        operation = None
-        loop_var = None
-        
-        if self.current_token() and self.current_token().type in [TokenType.UPPIN, TokenType.NERFIN]:
-            operation = self.current_token().type
-            self.advance()
-            self.expect(TokenType.YR)
-            loop_var = self.expect(TokenType.IDENTIFIER).value
+            # Check for operation (UPPIN or NERFIN)
+            operation = None
+            loop_var = None
             
-            if loop_var not in self.variables:
-                raise NameError(f"Semantic Error: Loop variable '{loop_var}' not declared")
-        
-        # Check for condition (TIL or WILE)
-        condition_type = None
-        condition_start_pos = None
-        
-        if self.current_token() and self.current_token().type in [TokenType.TIL, TokenType.WILE]:
-            condition_type = self.current_token().type
-            self.advance()
-            condition_start_pos = self.position
-            # Skip the condition for now, evaluate it in the loop
-            self.skip_expression()
-        
-        # Mark the start of loop body
-        loop_body_start = self.position
-        
-        # Find the end of the loop
-        depth = 1
-        loop_end = self.position
-        while loop_end < len(self.tokens):
-            if self.tokens[loop_end].type == TokenType.IM_IN_YR:
-                depth += 1
-            elif self.tokens[loop_end].type == TokenType.IM_OUTTA_YR:
-                depth -= 1
-                if depth == 0:
-                    break
-            loop_end += 1
-        
-        # Execute loop
-        while True:
-            # Check condition if present
-            if condition_type:
-                saved_pos = self.position
-                self.position = condition_start_pos
-                condition_value = self.parse_expression()
-                self.position = saved_pos
+            if self.current_token() and self.current_token().type in [TokenType.UPPIN, TokenType.NERFIN]:
+                operation = self.current_token().type
+                self.advance()
+                self.expect(TokenType.YR)
+                loop_var = self.expect(TokenType.IDENTIFIER).value
                 
-                if condition_type == TokenType.TIL:
-                    if self.is_truthy(condition_value):
-                        break
-                else:  # WILE
-                    if not self.is_truthy(condition_value):
-                        break
+                if loop_var not in self.variables:
+                    raise NameError(f"Semantic Error: Loop variable '{loop_var}' not declared")
             
-            # Execute loop body
-            self.position = loop_body_start
-            try:
-                while self.position < loop_end:
-                    if self.current_token().type == TokenType.IM_OUTTA_YR:
-                        break
-                    self.parse_statement()
-            except BreakException:
-                break
+            # Check for condition (TIL or WILE)
+            condition_type = None
+            condition_start_pos = None
             
-            # Update loop variable
-            if operation and loop_var:
-                if operation == TokenType.UPPIN:
-                    self.variables[loop_var] = self.to_number(self.variables[loop_var]) + 1
-                else:  # NERFIN
-                    self.variables[loop_var] = self.to_number(self.variables[loop_var]) - 1
-                self.update_symbol_callback(loop_var, self.variables[loop_var])
+            if self.current_token() and self.current_token().type in [TokenType.TIL, TokenType.WILE]:
+                condition_type = self.current_token().type
+                self.advance()
+                condition_start_pos = self.position
+                # Skip the condition for now, evaluate it in the loop
+                self.skip_expression()
+            
+            # Mark the start of loop body
+            loop_body_start = self.position
+            
+            # Find the end of the loop
+            depth = 1
+            loop_end = self.position
+            while loop_end < len(self.tokens):
+                if self.tokens[loop_end].type == TokenType.IM_IN_YR:
+                    depth += 1
+                elif self.tokens[loop_end].type == TokenType.IM_OUTTA_YR:
+                    depth -= 1
+                    if depth == 0:
+                        break
+                loop_end += 1
+            
+            # Execute loop
+            while True:
+                # Check condition if present
+                if condition_type:
+                    saved_pos = self.position
+                    self.position = condition_start_pos
+                    condition_value = self.parse_expression()
+                    self.position = saved_pos
+                    
+                    if condition_type == TokenType.TIL:
+                        if self.is_truthy(condition_value):
+                            break
+                    else:  # WILE
+                        if not self.is_truthy(condition_value):
+                            break
+                
+                # Execute loop body
+                self.position = loop_body_start
+                try:
+                    while self.position < loop_end:
+                        if self.current_token().type == TokenType.IM_OUTTA_YR:
+                            break
+                        self.parse_statement()
+                except BreakException:
+                    break
+                
+                # Update loop variable
+                if operation and loop_var:
+                    if operation == TokenType.UPPIN:
+                        self.variables[loop_var] = self.to_number(self.variables[loop_var]) + 1
+                    else:  # NERFIN
+                        self.variables[loop_var] = self.to_number(self.variables[loop_var]) - 1
+                    self.update_symbol_callback(loop_var, self.variables[loop_var])
+            
+            # Move position to after loop
+            self.position = loop_end
+            if self.current_token() and self.current_token().type == TokenType.IM_OUTTA_YR:
+                self.advance()
+                expected_name = self.expect(TokenType.IDENTIFIER).value
+                if expected_name != loop_name:
+                    raise SyntaxError(f"Loop name mismatch: expected '{loop_name}', got '{expected_name}'")
         
-        # Move position to after loop
-        self.position = loop_end
-        if self.current_token() and self.current_token().type == TokenType.IM_OUTTA_YR:
-            self.advance()
-            expected_name = self.expect(TokenType.IDENTIFIER).value
-            if expected_name != loop_name:
-                raise SyntaxError(f"Loop name mismatch: expected '{loop_name}', got '{expected_name}'")
+        finally:
+            # Restore the previous loop state
+            self._in_loop = old_in_loop
     
     # parse function definition
     def parse_function_definition(self):
@@ -423,7 +439,7 @@ class Parser:
 
         func_info = self.functions[func_name]
 
-    # Parse arguments
+        # Parse arguments
         args = []
         while self.current_token() and self.current_token().type == TokenType.YR:
             self.advance()
@@ -437,12 +453,16 @@ class Parser:
         if len(args) != len(func_info['params']):
             raise ValueError(f"Function '{func_name}' expects {len(func_info['params'])} arguments, got {len(args)}")
 
-    # Save global state
+        # Save global state
         saved_position = self.position
         saved_variables = self.variables.copy()
         saved_IT = self.IT
+        
+        # Save and set function context flag
+        old_in_function = getattr(self, "_in_function", False)
+        self._in_function = True
 
-    # Prepare local function scope - ONLY parameters, no globals
+        # Prepare local function scope - ONLY parameters, no globals
         local_scope = {param: arg for param, arg in zip(func_info['params'], args)}
         local_scope['IT'] = None 
 
@@ -465,6 +485,9 @@ class Parser:
                 
         except ReturnException as e:
             return_value = e.value
+        finally:
+            # Restore function context flag
+            self._in_function = old_in_function
 
         # Restore original state
         self.position = saved_position

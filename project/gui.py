@@ -393,6 +393,6 @@ class LOLCodeInterpreterGUI:
             parser.parse()
                         
         except (SyntaxError, NameError, ValueError, Exception) as e:
-            error_msg = f"Error: {str(e)}\n"
-            self.write_to_console(error_msg)
-            messagebox.showerror("Execution Error", str(e))
+            error_msg = str(e) if str(e) else f"{type(e).__name__} occurred"
+            self.write_to_console(f"Error: {error_msg}\n")
+            messagebox.showerror("Execution Error", error_msg)

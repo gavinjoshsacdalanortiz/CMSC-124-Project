@@ -20,7 +20,7 @@ HAI
 			GIMMEH input
 			VISIBLE DIFF OF 2022 AN input
 			GTFO
-		OMGG 2
+		OMG 2
 			VISIBLE "Enter bill cost: "
 			GIMMEH input
 			VISIBLE "Tip: " PRODUKT OF input AN 0.1
