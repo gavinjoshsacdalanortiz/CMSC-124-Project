@@ -7,6 +7,17 @@ class Lexer:
         self.source = source_code
         self.tokens = []
         self.line_number = 1
+        
+    # validates identifier name
+    def is_valid_identifier(self, identifier):
+        # Must start with a letter
+        if not identifier[0].isalpha():
+            return False
+        # can only contain letters, numbers, and underscores
+        for char in identifier:
+            if not (char.isalnum() or char == '_'):
+                return False
+        return True
 
     # Tokenize source code into a list of tokens
     def tokenize(self):
@@ -143,6 +154,9 @@ class Lexer:
                     elif word == "NOOB":
                         token_type = TokenType.NOOB
                     else:
+                        # check if identifier valid
+                        if not self.is_valid_identifier(word):
+                            raise SyntaxError(f"Lexical Error at line {self.line_number}, column {column}: Invalid identifier '{word}'")
                         token_type = TokenType.IDENTIFIER
                 
                 # add identified token to list

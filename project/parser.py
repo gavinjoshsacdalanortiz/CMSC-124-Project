@@ -40,18 +40,22 @@ class Parser:
 
     # main parse function to process tokens
     def parse(self):
-        self.expect(TokenType.HAI)  # start of program
-
-        # Optional version number
-        if self.current_token() and self.current_token().type in [TokenType.NUMBR_LITERAL, TokenType.NUMBAR_LITERAL]:
-            self.advance()
+        # parse any function definitions before HAI
+        while self.current_token() and self.current_token().type == TokenType.HOW_IZ_I:
+            self.parse_function_definition()
+        
+        # Expect HAI to start main program
+        self.expect(TokenType.HAI)
 
         # Optional variable declaration section
+        self.in_declaration_section = False
         if self.current_token() and self.current_token().type == TokenType.WAZZUP:
+            self.in_declaration_section = True  
             self.advance()
             while self.current_token() and self.current_token().type != TokenType.BUHBYE:
                 self.parse_variable_declaration()
             self.expect(TokenType.BUHBYE)
+            self.in_declaration_section = False 
 
         # Main program body
         while self.current_token() and self.current_token().type != TokenType.KTHXBYE:
@@ -60,10 +64,27 @@ class Parser:
             else:
                 self.parse_statement()
 
+        # Expect KTHXBYE to end main program
         self.expect(TokenType.KTHXBYE)
+        
+        # parse any function definitions after KTHXBYE
+        while self.current_token() and self.current_token().type == TokenType.HOW_IZ_I:
+            self.parse_function_definition()
+        
+        if self.current_token():
+            token = self.current_token()
+            raise SyntaxError(
+                f"Syntax Error at line {token.line}: "
+                f"Unexpected token '{token.value}' after KTHXBYE."
+            )
 
     # parse variable declaration statement
     def parse_variable_declaration(self):
+        # check if indeclaration section
+        if not getattr(self, 'in_declaration_section', False):
+            token = self.current_token()
+            raise SyntaxError(f"Syntax Error at line {token.line if token else 'unknown'}: Variable declaration outside WAZZUP")
+    
         self.expect(TokenType.I_HAS_A)
         var_name = self.expect(TokenType.IDENTIFIER).value
 
@@ -223,71 +244,92 @@ class Parser:
         self.expect(TokenType.OIC)
     
     # parse SWITCH statement
-
     def parse_switch(self):
         self.advance()  # consume WTF?
         
         switch_value = self.IT
-        found_match = False  # flag for found matching case
-        in_omgwtf = False  # flag for default case
-        should_break = False  # flag to break out after GTFO
+        found_match = False
+        in_omgwtf = False
+        should_break = False
+        
+        # helper function to validate case body tokens
+        def validate_case_token(token):
+            if token and token.type == TokenType.IDENTIFIER:
+                value = token.value.upper()
+                if value.startswith("OMG") and value not in ["OMG", "OMGWTF"]:
+                    raise SyntaxError(
+                        f"Syntax Error at line {token.line}: Expected OMG or OMGWTF in switch case, got '{token.value}'"
+                    )
         
         # process cases until OIC
         while self.current_token() and self.current_token().type != TokenType.OIC:
-            # If we already hit GTFO, skip to OIC
             if should_break:
+                # even when breaking validate tokens
+                validate_case_token(self.current_token())
                 self.advance()
                 continue
                 
-            # handle OMG case
-            if self.current_token().type == TokenType.OMG:
+            token = self.current_token()
+            
+            # process OMG case
+            if token.type == TokenType.OMG:
                 self.advance()
                 case_value = self.parse_expression()
                 
-                # check for match if not already matched or in default
                 if not found_match and not in_omgwtf and not should_break:
                     if self.values_equal(switch_value, case_value):
                         found_match = True
-                        # Execute this case
+                        # eecute this case
                         while (self.current_token() and 
-                               self.current_token().type not in [TokenType.OMG, TokenType.OMGWTF, TokenType.OIC]):
+                            self.current_token().type not in [TokenType.OMG, TokenType.OMGWTF, TokenType.OIC]):
+                            # validate before parsing
+                            validate_case_token(self.current_token())
                             try:
                                 self.parse_statement()
                             except BreakException:
-                                # GTFO encountered, skip to OIC
                                 should_break = True
                                 break
                     else:
-                        # Skip this case
+                        # skip case but validate
                         while (self.current_token() and 
-                               self.current_token().type not in [TokenType.OMG, TokenType.OMGWTF, TokenType.OIC]):
+                            self.current_token().type not in [TokenType.OMG, TokenType.OMGWTF, TokenType.OIC]):
+                            validate_case_token(self.current_token())
                             self.advance()
                 else:
-                    # Already found match or should break, skip this case
+                    # skip case but validate
                     while (self.current_token() and 
-                           self.current_token().type not in [TokenType.OMG, TokenType.OMGWTF, TokenType.OIC]):
+                        self.current_token().type not in [TokenType.OMG, TokenType.OMGWTF, TokenType.OIC]):
+                        validate_case_token(self.current_token())
                         self.advance()
             
-            # handle OMGWTF default case
-            elif self.current_token().type == TokenType.OMGWTF:
+            # process OMGWTF (default) case
+            elif token.type == TokenType.OMGWTF:
                 self.advance()
                 in_omgwtf = True
                 if not found_match and not should_break:
-                    # Execute default case
+                    # execute default case
                     while (self.current_token() and 
-                           self.current_token().type not in [TokenType.OIC]):
+                        self.current_token().type not in [TokenType.OIC]):
+                        validate_case_token(self.current_token())
                         try:
                             self.parse_statement()
                         except BreakException:
                             should_break = True
                             break
                 else:
-                    # Already found match or should break, skip default
+                    # skip case but validate
                     while (self.current_token() and 
-                           self.current_token().type not in [TokenType.OIC]):
+                        self.current_token().type not in [TokenType.OIC]):
+                        validate_case_token(self.current_token())
                         self.advance()
+            
             else:
-                self.advance()
+                # invalid token in switch case
+                validate_case_token(token)
+                
+                raise SyntaxError(
+                    f"Syntax Error at line {token.line}: Expected OMG or OMGWTF in switch case, got '{token.value}'"
+                )
         
         # expect OIC to end switch
         if self.current_token() and self.current_token().type == TokenType.OIC:
@@ -585,27 +627,27 @@ class Parser:
             self.advance()
             return self.variables[var_name]
         
-        # Arithmetic and comparison operations (variadic where applicable)
+        # arithmetic and comparison operations
         if token.type in [TokenType.SUM_OF, TokenType.DIFF_OF, TokenType.PRODUKT_OF,
                           TokenType.QUOSHUNT_OF, TokenType.MOD_OF, TokenType.BIGGR_OF,
                           TokenType.SMALLR_OF]:
-            return self.parse_variadic_numeric_op(token.type)
+            return self.parse_numeric_op(token.type)
         
         # Boolean operations
         if token.type == TokenType.ALL_OF:
             return self.parse_all_of()
         
         if token.type == TokenType.ANY_OF:
-            return self.parse_variadic_boolean_op(token.type)
+            return self.parse_boolean_op(token.type)
 
         if token.type == TokenType.BOTH_OF:
-            return self.parse_variadic_boolean_op(token.type)
+            return self.parse_boolean_op(token.type)
         
         if token.type == TokenType.EITHER_OF:
-            return self.parse_variadic_boolean_op(token.type)
+            return self.parse_boolean_op(token.type)
         
         if token.type == TokenType.WON_OF:
-            return self.parse_variadic_boolean_op(token.type)
+            return self.parse_boolean_op(token.type)
         
         if token.type == TokenType.NOT:
             self.advance()
@@ -685,8 +727,8 @@ class Parser:
             self.advance()
         return operation(left, right)
     
-   # parse numeric operations (strictly binary to prevent nesting issues)
-    def parse_variadic_numeric_op(self, op_type):
+   # parse numeric operations 
+    def parse_numeric_op(self, op_type):
         # consume operator token
         self.advance()
         
@@ -702,33 +744,53 @@ class Parser:
         # Optional MKAY (consume if present)
         if self.current_token() and self.current_token().type == TokenType.MKAY:
             self.advance()
-            
+        
+        # Convert to numbers (will raise error if cannot be cast)
         val1 = self.to_number(left)
         val2 = self.to_number(right)
         
+        # if both values are int result is NUMBR
+        # if at least one is a float result is NUMBAR
+        both_are_numbr = (isinstance(val1, int) and isinstance(val2, int) and 
+                        not isinstance(val1, bool) and not isinstance(val2, bool))
+        
         if op_type == TokenType.SUM_OF:
-            return val1 + val2
+            result = val1 + val2
+            return int(result) if both_are_numbr else float(result)
+        
         elif op_type == TokenType.DIFF_OF:
-            return val1 - val2
+            result = val1 - val2
+            return int(result) if both_are_numbr else float(result)
+        
         elif op_type == TokenType.PRODUKT_OF:
-            return val1 * val2
+            result = val1 * val2
+            return int(result) if both_are_numbr else float(result)
+        
         elif op_type == TokenType.QUOSHUNT_OF:
             if val2 == 0:
                 return 0
-            return int(val1 / val2)
+            result = val1 / val2
+            # if both are NUMBR, truncate to int else keep as float
+            return int(result) if both_are_numbr else result
+        
         elif op_type == TokenType.MOD_OF:
             if val2 == 0:
                 return 0
-            return val1 % val2
+            result = val1 % val2
+            return int(result) if both_are_numbr else result
+        
         elif op_type == TokenType.BIGGR_OF:
-            return max(val1, val2)
+            result = max(val1, val2)
+            return int(result) if both_are_numbr else result
+        
         elif op_type == TokenType.SMALLR_OF:
-            return min(val1, val2)
+            result = min(val1, val2)
+            return int(result) if both_are_numbr else result
             
         return 0
     
-    # parse variadic boolean ops (ANY_OF, BOTH_OF, EITHER_OF, WON_OF)
-    def parse_variadic_boolean_op(self, op_type):
+    # parse boolean ops (ANY_OF, BOTH_OF, EITHER_OF, WON_OF)
+    def parse_boolean_op(self, op_type):
         self.advance()
         first = self.parse_expression()
         args = [first]
@@ -759,7 +821,7 @@ class Parser:
             return (count % 2) == 1
         return False
     
-    # parse ALL OF (special variadic that defaults to True and short-circuits)
+    # parse ALL OF
     def parse_all_of(self):
         self.advance()
         result = True
@@ -779,20 +841,42 @@ class Parser:
     
     # utility function to convert value to number
     def to_number(self, value):
+        # return error on implicit typecast of NOOB to number
+        if value is None:
+            raise ValueError("Type Error: Cannot implicitly typecast NOOB to numeric type.")
+        
         if isinstance(value, (int, float)):
             return value
         if isinstance(value, str):
+            # vlidate YARN for numeric casting
+            if not value:  # empty string
+                return 0
+            # check if string contains only valid numeric characters
+            test_str = value.lstrip('-')  # remove leading negative sign
+            if not test_str:  # just a minus sign
+                raise ValueError(f"Type Error: Cannot cast YARN '{value}' to numeric type.")
+            
+            # check for valid numeric string (digits and at most one period)
+            has_period = False
+            for char in test_str:
+                if char == '.':
+                    if has_period:  # more than one period
+                        raise ValueError(f"Type Error: Cannot cast YARN '{value}' to numeric type.")
+                    has_period = True
+                elif not char.isdigit():
+                    raise ValueError(f"Type Error: Cannot cast YARN '{value}' to numeric type.")
+            
             try:
                 if '.' in value:
                     return float(value)
                 return int(value)
             except ValueError:
-                return 0
+                raise ValueError(f"Type Error: Cannot cast YARN '{value}' to numeric type.")
+        
         if isinstance(value, bool):
             return 1 if value else 0
-        if value is None:
-            return 0
-        return 0
+        
+        raise ValueError(f"Type Error: Cannot convert {type(value).__name__} to numeric type.")
     
     # utility function to determine truthiness of a value
     def is_truthy(self, value):
@@ -805,20 +889,34 @@ class Parser:
             return value != 0
         if isinstance(value, str):
             return value != ''
-        return True 
+        return True
     
     # utility function to convert value to string
     def stringify(self, value):
         if value is None: # NOOB
             return ''
-        # check for boolean, if so convert to WIN/FAIL
+        # check for boolean if so convert to WIN/FAIL
         if isinstance(value, bool):
             return 'WIN' if value else 'FAIL'
+        if isinstance(value, float):
+            return f"{value:.2f}"
         return str(value) # convert other types to string
     
     # utility function to cast value to specified type
     def cast_value(self, value, type_name):
         type_upper = type_name.upper()
+        
+        # explicit casting of NOOB = empty/zero values
+        if value is None:
+            if type_upper == 'NUMBR':
+                return 0
+            elif type_upper == 'NUMBAR':
+                return 0.0
+            elif type_upper == 'YARN':
+                return ''
+            elif type_upper == 'TROOF':
+                return False
+        
         if type_upper == 'NUMBR':
             return int(self.to_number(value))
         elif type_upper == 'NUMBAR':
